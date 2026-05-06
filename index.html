@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Visualizer Hub</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --bg:#0d1117;
+  --surface:#161b22;
+  --border:#30363d;
+  --text:#e6edf3;
+  --muted:#7d8590;
+  --accent:#388bfd;
+  --accent2:#58a6ff;
+  --sans:'Syne', sans-serif;
+  --mono:'JetBrains Mono', monospace;
+  --r:12px;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--sans);
+}
+
+/* HEADER */
+.header {
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:16px 24px;
+  border-bottom:1px solid var(--border);
+  background:#010409;
+}
+
+.logo {
+  width:38px;height:38px;
+  border-radius:10px;
+  background:linear-gradient(135deg,#388bfd,#1158c7);
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;
+}
+
+.title {
+  font-weight:800;
+  font-size:1rem;
+}
+
+.subtitle {
+  font-family:var(--mono);
+  font-size:0.65rem;
+  color:var(--muted);
+}
+
+/* GRID */
+.container {
+  max-width:1100px;
+  margin:auto;
+  padding:30px 20px;
+}
+
+.grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+  gap:16px;
+}
+
+/* CARD */
+.card {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  padding:18px;
+  transition:0.2s;
+  cursor:pointer;
+}
+
+.card:hover {
+  border-color:var(--accent);
+  transform:translateY(-3px);
+  box-shadow:0 8px 25px rgba(56,139,253,0.15);
+}
+
+.card-title {
+  font-weight:700;
+  margin-bottom:6px;
+}
+
+.card-desc {
+  font-size:0.8rem;
+  color:var(--muted);
+  line-height:1.5;
+}
+
+.badge {
+  display:inline-block;
+  margin-top:10px;
+  font-family:var(--mono);
+  font-size:0.6rem;
+  padding:4px 8px;
+  border-radius:20px;
+  background:rgba(56,139,253,0.12);
+  color:var(--accent2);
+  border:1px solid rgba(56,139,253,0.3);
+}
+</style>
+</head>
+
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="logo">⚙️</div>
+  <div>
+    <div class="title">Visualizer Hub</div>
+    <div class="subtitle">INTERACTIVE LEARNING TOOLS</div>
+  </div>
+</div>
+
+<!-- CONTENT -->
+<div class="container">
+  <div class="grid">
+
+    <div class="card" onclick="location.href='https://sharatmaharjan.github.io/Visualizer/ProcessSchedulingVisualizer.html'">
+      <div class="card-title">Process Scheduling</div>
+      <div class="card-desc">
+        Visualize CPU scheduling algorithms like FCFS, SJF, SRTF, RR, and Priority.
+      </div>
+      <div class="badge">OS</div>
+    </div>
+
+    <div class="card" onclick="location.href='page-replacement.html'">
+      <div class="card-title">Page Replacement</div>
+      <div class="card-desc">
+        Simulate FIFO, LRU, and Optimal page replacement algorithms.
+      </div>
+      <div class="badge">Memory</div>
+    </div>
+
+    <div class="card" onclick="location.href='disk-scheduling.html'">
+      <div class="card-title">Disk Scheduling</div>
+      <div class="card-desc">
+        Explore disk head movement using SCAN, C-SCAN, SSTF, and FCFS.
+      </div>
+      <div class="badge">OS</div>
+    </div>
+
+    <div class="card" onclick="location.href='deadlock.html'">
+      <div class="card-title">Deadlock Detection</div>
+      <div class="card-desc">
+        Understand resource allocation and deadlock detection algorithms.
+      </div>
+      <div class="badge">OS</div>
+    </div>
+
+    <div class="card" onclick="location.href='bankers.html'">
+      <div class="card-title">Banker's Algorithm</div>
+      <div class="card-desc">
+        Check system safety and avoid deadlocks using Banker’s Algorithm.
+      </div>
+      <div class="badge">OS</div>
+    </div>
+
+    <div class="card" onclick="location.href='sorting.html'">
+      <div class="card-title">Sorting Visualizer</div>
+      <div class="card-desc">
+        Visualize Bubble, Quick, Merge, and other sorting algorithms.
+      </div>
+      <div class="badge">DSA</div>
+    </div>
+
+    <div class="card" onclick="location.href='searching.html'">
+      <div class="card-title">Searching Visualizer</div>
+      <div class="card-desc">
+        Step-by-step Binary Search and Linear Search visualization.
+      </div>
+      <div class="badge">DSA</div>
+    </div>
+
+    <div class="card" onclick="location.href='networking.html'">
+      <div class="card-title">Networking Simulator</div>
+      <div class="card-desc">
+        Explore packet flow, routing, and protocol behavior.
+      </div>
+      <div class="badge">CN</div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>
