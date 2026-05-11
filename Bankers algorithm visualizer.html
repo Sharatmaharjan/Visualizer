@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Banker's Algorithm Visualizer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --surface2: #1c2333;
+            --border: #30363d;
+            --border2: #21262d;
+            --text: #e6edf3;
+            --muted: #7d8590;
+            --dim: #484f58;
+            --accent: #388bfd;
+            --accent2: #58a6ff;
+            --success: #3fb950;
+            --warn: #d29922;
+            --danger: #f85149;
+            --sans: 'Syne', sans-serif;
+            --mono: 'JetBrains Mono', monospace;
+            --r: 10px;
+            --r-sm: 6px;
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--sans);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            font-size: 14px;
+        }
+
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+
+        .app-header {
+            background: #010409;
+            border-bottom: 1px solid var(--border2);
+            padding: 14px 28px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #388bfd, #1158c7);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 17px;
+            flex-shrink: 0;
+        }
+        .app-name {
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--text);
+            letter-spacing: -0.01em;
+        }
+        .app-sub {
+            font-family: var(--mono);
+            font-size: 0.62rem;
+            color: var(--muted);
+            letter-spacing: 0.08em;
+            margin-top: 1px;
+        }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.25rem;
+            padding: 1.25rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            align-items: start;
+        }
+        @media (max-width: 950px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            overflow: hidden;
+        }
+        .panel-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border2);
+            background: rgba(255, 255, 255, 0.015);
+        }
+        .panel-head-title {
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+        .panel-body {
+            padding: 18px;
+        }
+
+        .field-label {
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--muted);
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .field-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+        .field-row label {
+            font-size: 0.82rem;
+            color: var(--muted);
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .mono-input-sm {
+            width: 60px;
+            padding: 6px 8px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--r-sm);
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-align: center;
+            transition: border-color .2s;
+        }
+        .mono-input-sm:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(56, 139, 253, 0.15);
+        }
+
+        .btn {
+            padding: 8px 16px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--r-sm);
+            color: var(--text);
+            font-family: var(--sans);
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background .2s, border-color .2s;
+        }
+        .btn:hover {
+            border-color: var(--accent);
+            background: rgba(56, 139, 253, 0.08);
+        }
+        .btn-primary {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+            box-shadow: 0 0 0 0 rgba(56, 139, 253, 0.4);
+            transition: background .2s, box-shadow .2s, transform .1s;
+        }
+        .btn-primary:hover {
+            background: #1f6feb;
+            box-shadow: 0 0 16px rgba(56, 139, 253, 0.25);
+        }
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+
+        .divider {
+            height: 1px;
+            background: var(--border2);
+            margin: 16px 0;
+        }
+
+        .matrix-container {
+            margin-bottom: 18px;
+        }
+        .matrix-table {
+            width: auto;
+            border-collapse: collapse;
+            margin-top: 4px;
+        }
+        .matrix-table th {
+            font-family: var(--mono);
+            font-size: 0.6rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--dim);
+            padding: 5px 8px;
+            text-align: center;
+            border-bottom: 1px solid var(--border2);
+        }
+        .matrix-table td {
+            padding: 3px 2px;
+            text-align: center;
+        }
+        .matrix-table input {
+            width: 56px;
+            padding: 6px 4px;
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            border-radius: 5px;
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-align: center;
+            transition: border-color .15s;
+        }
+        .matrix-table input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(56, 139, 253, 0.12);
+        }
+
+        .output-section {
+            margin-top: 14px;
+        }
+        .output-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .output-table th {
+            font-family: var(--mono);
+            font-size: 0.6rem;
+            font-weight: 700;
+            letter-spacing: 0.09em;
+            text-transform: uppercase;
+            color: var(--muted);
+            padding: 8px 10px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.02);
+            border-bottom: 1px solid var(--border);
+        }
+        .output-table th:first-child {
+            text-align: left;
+            border-radius: 8px 0 0 0;
+        }
+        .output-table td {
+            padding: 7px 10px;
+            text-align: center;
+            border-bottom: 1px solid var(--border2);
+            font-family: var(--mono);
+            font-size: 0.8rem;
+        }
+        .output-table td:first-child {
+            text-align: left;
+        }
+        .output-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .status-badge {
+            font-family: var(--mono);
+            font-weight: 700;
+            padding: 4px 12px;
+            border-radius: 20px;
+            display: inline-block;
+            font-size: 0.75rem;
+            letter-spacing: 0.04em;
+        }
+        .safe {
+            background: rgba(63, 185, 80, 0.15);
+            color: var(--success);
+            border: 1px solid rgba(63, 185, 80, 0.4);
+        }
+        .unsafe {
+            background: rgba(248, 81, 73, 0.15);
+            color: var(--danger);
+            border: 1px solid rgba(248, 81, 73, 0.4);
+        }
+
+        .sequence {
+            font-family: var(--mono);
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--accent2);
+            background: rgba(56, 139, 253, 0.08);
+            padding: 10px 14px;
+            border-radius: 6px;
+            border: 1px solid rgba(56, 139, 253, 0.25);
+            margin: 10px 0;
+            word-break: break-word;
+        }
+
+        .step-list {
+            list-style: none;
+            padding: 0;
+            margin: 10px 0 0;
+            font-family: var(--mono);
+            font-size: 0.75rem;
+            color: var(--muted);
+        }
+        .step-list li {
+            padding: 6px 10px;
+            border-left: 2px solid var(--border2);
+            margin-bottom: 4px;
+            background: rgba(255, 255, 255, 0.01);
+            border-radius: 0 4px 4px 0;
+        }
+        .step-list li code {
+            color: var(--accent2);
+            background: transparent;
+            font-weight: 600;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem 2rem;
+            text-align: center;
+            color: var(--muted);
+        }
+        .empty-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            opacity: 0.3;
+        }
+        .empty-state p {
+            font-size: 0.85rem;
+            line-height: 1.7;
+            color: var(--dim);
+        }
+        .empty-state strong {
+            color: var(--muted);
+        }
+    </style>
+</head>
+<body>
+    <header class="app-header">
+        <div class="logo-icon">🔐</div>
+        <div>
+            <div class="app-name">Banker's Algorithm Visualizer</div>
+            <div class="app-sub">DEADLOCK AVOIDANCE · SAFETY ALGORITHM</div>
+        </div>
+    </header>
+
+    <div class="main-layout">
+        <!-- INPUT PANEL -->
+        <div class="panel">
+            <div class="panel-head">
+                <span class="panel-head-title">📋 Configuration</span>
+            </div>
+            <div class="panel-body">
+                <div class="field-row">
+                    <label>Processes (n)</label>
+                    <input type="number" class="mono-input-sm" id="procCount" value="5" min="1" max="10" onchange="generateMatrices()">
+                    <label style="margin-left:10px;">Resources (m)</label>
+                    <input type="number" class="mono-input-sm" id="resCount" value="4" min="1" max="10" onchange="generateMatrices()">
+                    <button class="btn" onclick="generateMatrices()" style="margin-left:auto;">🔄 Generate</button>
+                </div>
+                <div class="divider"></div>
+
+                <div id="matrixInputArea">
+                    <!-- dynamically filled -->
+                </div>
+
+                <div class="divider"></div>
+                <button class="btn-primary" onclick="solveBankers()" style="width:100%; justify-content:center;">
+                    ▶ Solve &amp; Check Safety
+                </button>
+            </div>
+        </div>
+
+        <!-- OUTPUT PANEL -->
+        <div class="panel" id="outPanel">
+            <div class="panel-head">
+                <span class="panel-head-title">📊 Output</span>
+            </div>
+            <div id="outBody">
+                <div class="empty-state">
+                    <div class="empty-icon">📈</div>
+                    <p>Enter allocation, max matrices, and available resources,<br>then click <strong>Solve &amp; Check Safety</strong>.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Default example data (from Jenny's Lectures)
+        const defaultData = {
+            processes: 5,
+            resources: 4,
+            allocation: [
+                [0, 1, 0, 2],
+                [1, 0, 0, 0],
+                [1, 3, 5, 4],
+                [0, 6, 3, 2],
+                [0, 0, 1, 4]
+            ],
+            max: [
+                [0, 0, 1, 2],
+                [1, 7, 5, 0],
+                [2, 3, 5, 6],
+                [0, 6, 5, 2],
+                [0, 6, 5, 6]
+            ],
+            available: [1, 5, 2, 0]
+        };
+
+        window.onload = () => {
+            generateMatrices();
+        };
+
+        function generateMatrices() {
+            const n = parseInt(document.getElementById('procCount').value) || 5;
+            const m = parseInt(document.getElementById('resCount').value) || 4;
+            const area = document.getElementById('matrixInputArea');
+            let html = '';
+
+            // Allocation table
+            html += `<div class="matrix-container"><span class="field-label">📥 Allocation Matrix</span>`;
+            html += `<table class="matrix-table"><thead><tr><th></th>`;
+            for (let j = 0; j < m; j++) html += `<th>${String.fromCharCode(65+j)}</th>`;
+            html += `</tr></thead><tbody>`;
+            for (let i = 0; i < n; i++) {
+                html += `<tr><td style="font-weight:700;color:var(--muted);padding-right:8px;">P${i}</td>`;
+                for (let j = 0; j < m; j++) {
+                    let val = (defaultData.allocation[i] && defaultData.allocation[i][j] !== undefined) ? defaultData.allocation[i][j] : 0;
+                    html += `<td><input type="number" class="alloc-input" data-row="${i}" data-col="${j}" value="${val}" min="0"></td>`;
+                }
+                html += `</tr>`;
+            }
+            html += `</tbody></table></div>`;
+
+            // Max table
+            html += `<div class="matrix-container"><span class="field-label">📈 Max Matrix</span>`;
+            html += `<table class="matrix-table"><thead><tr><th></th>`;
+            for (let j = 0; j < m; j++) html += `<th>${String.fromCharCode(65+j)}</th>`;
+            html += `</tr></thead><tbody>`;
+            for (let i = 0; i < n; i++) {
+                html += `<tr><td style="font-weight:700;color:var(--muted);padding-right:8px;">P${i}</td>`;
+                for (let j = 0; j < m; j++) {
+                    let val = (defaultData.max[i] && defaultData.max[i][j] !== undefined) ? defaultData.max[i][j] : 0;
+                    html += `<td><input type="number" class="max-input" data-row="${i}" data-col="${j}" value="${val}" min="0"></td>`;
+                }
+                html += `</tr>`;
+            }
+            html += `</tbody></table></div>`;
+
+            // Available vector
+            html += `<div class="field-label" style="margin-top:12px;">🟢 Available Vector</div>`;
+            html += `<div class="field-row" style="gap:6px;">`;
+            for (let j = 0; j < m; j++) {
+                let val = (defaultData.available[j] !== undefined) ? defaultData.available[j] : 0;
+                html += `<label style="font-family:var(--mono);font-size:0.75rem;">${String.fromCharCode(65+j)}</label>`;
+                html += `<input type="number" class="avail-input mono-input-sm" data-col="${j}" value="${val}" min="0">`;
+            }
+            html += `</div>`;
+
+            area.innerHTML = html;
+        }
+
+        function readMatrix(className, rows, cols) {
+            const inputs = document.querySelectorAll(`.${className}`);
+            const matrix = Array(rows).fill().map(() => Array(cols).fill(0));
+            inputs.forEach(inp => {
+                const r = parseInt(inp.dataset.row);
+                const c = parseInt(inp.dataset.col);
+                matrix[r][c] = parseInt(inp.value) || 0;
+            });
+            return matrix;
+        }
+
+        function readAvailable(cols) {
+            const inputs = document.querySelectorAll('.avail-input');
+            const avail = Array(cols).fill(0);
+            inputs.forEach(inp => {
+                const c = parseInt(inp.dataset.col);
+                avail[c] = parseInt(inp.value) || 0;
+            });
+            return avail;
+        }
+
+        function solveBankers() {
+            const n = parseInt(document.getElementById('procCount').value) || 5;
+            const m = parseInt(document.getElementById('resCount').value) || 4;
+
+            const allocation = readMatrix('alloc-input', n, m);
+            const max = readMatrix('max-input', n, m);
+            const available = readAvailable(m);
+
+            // Validate Allocation <= Max
+            for (let i = 0; i < n; i++) {
+                for (let j = 0; j < m; j++) {
+                    if (allocation[i][j] > max[i][j]) {
+                        alert(`Error: P${i} allocation exceeds max for resource ${String.fromCharCode(65+j)}.`);
+                        return;
+                    }
+                }
+            }
+
+            // Calculate Need matrix
+            const need = Array(n).fill().map(() => Array(m).fill(0));
+            for (let i = 0; i < n; i++) {
+                for (let j = 0; j < m; j++) {
+                    need[i][j] = max[i][j] - allocation[i][j];
+                }
+            }
+
+            // Banker's safety algorithm
+            const work = [...available];
+            const finish = Array(n).fill(false);
+            const safeSeq = [];
+            const steps = [];
+            let changed = true;
+            while (changed) {
+                changed = false;
+                for (let i = 0; i < n; i++) {
+                    if (!finish[i]) {
+                        let canAllocate = true;
+                        for (let j = 0; j < m; j++) {
+                            if (need[i][j] > work[j]) {
+                                canAllocate = false;
+                                break;
+                            }
+                        }
+                        if (canAllocate) {
+                            // Record step
+                            steps.push({
+                                process: i,
+                                workBefore: [...work],
+                                need: [...need[i]],
+                                allocation: [...allocation[i]],
+                                workAfter: work.map((w, j) => w + allocation[i][j])
+                            });
+                            // Update work
+                            for (let j = 0; j < m; j++) {
+                                work[j] += allocation[i][j];
+                            }
+                            finish[i] = true;
+                            safeSeq.push(i);
+                            changed = true;
+                        }
+                    }
+                }
+            }
+
+            const isSafe = finish.every(f => f === true);
+
+            // Render output
+            renderOutput(n, m, allocation, max, need, available, isSafe, safeSeq, steps);
+        }
+
+        function renderOutput(n, m, alloc, max, need, avail, isSafe, safeSeq, steps) {
+            // Need matrix table
+            let needHtml = `<table class="output-table"><thead><tr><th>Process</th>`;
+            for (let j = 0; j < m; j++) needHtml += `<th>${String.fromCharCode(65+j)}</th>`;
+            needHtml += `</tr></thead><tbody>`;
+            for (let i = 0; i < n; i++) {
+                needHtml += `<tr><td style="font-weight:700;">P${i}</td>`;
+                for (let j = 0; j < m; j++) needHtml += `<td>${need[i][j]}</td>`;
+                needHtml += `</tr>`;
+            }
+            needHtml += `</tbody></table>`;
+
+            // Safety status & sequence
+            let statusHtml = '';
+            if (isSafe) {
+                statusHtml += `<span class="status-badge safe">✔ SYSTEM IS IN SAFE STATE</span>`;
+                const seqStr = safeSeq.map(p => `P${p}`).join(' → ');
+                statusHtml += `<div class="sequence">🔹 Safe Sequence: <strong>${seqStr}</strong></div>`;
+            } else {
+                statusHtml += `<span class="status-badge unsafe">⚠ SYSTEM IS UNSAFE — Deadlock possible</span>`;
+            }
+
+            // Steps (only if safe)
+            let stepsHtml = '';
+            if (isSafe && steps.length > 0) {
+                stepsHtml += `<div class="field-label" style="margin-top:16px;">🧩 Step‑by‑step Execution</div>`;
+                stepsHtml += `<ul class="step-list">`;
+                steps.forEach((s, idx) => {
+                    stepsHtml += `<li>`;
+                    stepsHtml += `<strong>Step ${idx+1}:</strong> Select <code>P${s.process}</code> `;
+                    stepsHtml += `[Work: (${s.workBefore.join(', ')})] `;
+                    stepsHtml += `Need: (${s.need.join(', ')}) ≤ Work → `;
+                    stepsHtml += `New Work = Work + Allocation = (${s.workAfter.join(', ')})`;
+                    stepsHtml += `</li>`;
+                });
+                stepsHtml += `</ul>`;
+            }
+
+            const outputBody = document.getElementById('outBody');
+            outputBody.innerHTML = `
+                <div class="panel-body fade-up">
+                    <div class="field-label">📌 Need Matrix (Max – Allocation)</div>
+                    ${needHtml}
+                    <div class="divider"></div>
+                    ${statusHtml}
+                    ${stepsHtml}
+                    ${!isSafe && safeSeq.length < n ? `<p style="color:var(--muted);margin-top:8px;">Processes that could not be satisfied: ${Array.from({length:n},(_,i)=>!finish[i]?`P${i}`:null).filter(Boolean).join(', ') || 'all'}</p>` : ''}
+                </div>
+            `;
+            // Re-attach finish array for unsafe message (finish is local, so we'll use the safeSeq incomplete info)
+            if (!isSafe) {
+                const finishedSet = new Set(safeSeq);
+                const unfinished = [];
+                for (let i = 0; i < n; i++) if (!finishedSet.has(i)) unfinished.push(`P${i}`);
+                outputBody.querySelector('.panel-body').insertAdjacentHTML('beforeend',
+                    `<p style="color:var(--warn);margin-top:6px;font-family:var(--mono);font-size:0.75rem;">Unfinished processes: ${unfinished.join(', ')}</p>`);
+            }
+            // Animation
+            outputBody.querySelector('.panel-body').classList.add('fade-up');
+        }
+
+        // Simple fade animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fadeUp {
+                from { opacity: 0; transform: translateY(12px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+            .fade-up { animation: fadeUp 0.4s ease; }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
