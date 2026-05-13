@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disk Scheduling Visualizer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --surface2: #1c2333;
+            --border: #30363d;
+            --border2: #21262d;
+            --text: #e6edf3;
+            --muted: #7d8590;
+            --dim: #484f58;
+            --accent: #388bfd;
+            --accent2: #58a6ff;
+            --success: #3fb950;
+            --warn: #d29922;
+            --danger: #f85149;
+            --sans: 'Syne', sans-serif;
+            --mono: 'JetBrains Mono', monospace;
+            --r: 10px;
+            --r-sm: 6px;
+        }
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: var(--sans);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            font-size: 14px;
+        }
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+
+        .app-header {
+            background: #010409;
+            border-bottom: 1px solid var(--border2);
+            padding: 14px 28px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #d29922, #9e6a03);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 17px;
+            flex-shrink: 0;
+        }
+        .app-name {
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--text);
+            letter-spacing: -0.01em;
+        }
+        .app-sub {
+            font-family: var(--mono);
+            font-size: 0.62rem;
+            color: var(--muted);
+            letter-spacing: 0.08em;
+            margin-top: 1px;
+        }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            gap: 1.25rem;
+            padding: 1.25rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            align-items: start;
+        }
+        @media (max-width: 900px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            overflow: hidden;
+        }
+        .panel-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border2);
+            background: rgba(255, 255, 255, 0.015);
+        }
+        .panel-head-title {
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+        .panel-body {
+            padding: 18px;
+        }
+
+        .field-label {
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--muted);
+            display: block;
+            margin-bottom: 6px;
+        }
+        .field-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+        .field-row label {
+            font-size: 0.82rem;
+            color: var(--muted);
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .mono-input {
+            width: 80px;
+            padding: 8px 10px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--r-sm);
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-align: center;
+            transition: border-color .2s;
+        }
+        .mono-input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(56, 139, 253, 0.15);
+        }
+        .styled-select {
+            width: 100%;
+            padding: 9px 12px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--r-sm);
+            color: var(--text);
+            font-family: var(--sans);
+            font-size: 0.82rem;
+            font-weight: 600;
+            appearance: none;
+            cursor: pointer;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%237d8590'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 30px;
+            transition: border-color .2s, box-shadow .2s;
+        }
+        .styled-select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(56, 139, 253, 0.15);
+        }
+        .styled-select option {
+            background: #1c2333;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--r-sm);
+            color: var(--text);
+            font-family: var(--sans);
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background .2s, border-color .2s;
+        }
+        .btn:hover {
+            border-color: var(--accent);
+            background: rgba(56, 139, 253, 0.08);
+        }
+        .btn-primary {
+            width: 100%;
+            padding: 11px 16px;
+            background: var(--accent);
+            border: none;
+            border-radius: var(--r-sm);
+            color: #fff;
+            font-family: var(--sans);
+            font-size: 0.88rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: background .2s, transform .1s, box-shadow .2s;
+            box-shadow: 0 0 0 0 rgba(56, 139, 253, 0.4);
+        }
+        .btn-primary:hover {
+            background: #1f6feb;
+            box-shadow: 0 0 16px rgba(56, 139, 253, 0.25);
+        }
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+        .divider {
+            height: 1px;
+            background: var(--border2);
+            margin: 16px 0;
+        }
+
+        .info-alert {
+            background: rgba(210, 153, 34, 0.1);
+            border: 1px solid rgba(210, 153, 34, 0.3);
+            border-radius: var(--r-sm);
+            padding: 8px 12px;
+            font-family: var(--mono);
+            font-size: 0.7rem;
+            color: #d29922;
+            line-height: 1.5;
+            margin-bottom: 14px;
+        }
+
+        /* Output styles */
+        .output-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .output-table th {
+            font-family: var(--mono);
+            font-size: 0.62rem;
+            font-weight: 700;
+            letter-spacing: 0.09em;
+            text-transform: uppercase;
+            color: var(--muted);
+            padding: 8px 10px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.02);
+            border-bottom: 1px solid var(--border);
+        }
+        .output-table th:first-child {
+            text-align: left;
+            border-radius: 8px 0 0 0;
+        }
+        .output-table td {
+            padding: 6px 10px;
+            text-align: center;
+            border-bottom: 1px solid var(--border2);
+            font-family: var(--mono);
+            font-size: 0.8rem;
+        }
+        .output-table td:first-child {
+            text-align: left;
+            font-weight: 700;
+        }
+        .output-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+        .avg-row td {
+            font-weight: 700;
+            color: var(--accent2);
+            background: rgba(56, 139, 253, 0.06);
+            border-top: 1px solid var(--border);
+            border-bottom: none;
+            font-size: 0.79rem;
+        }
+
+        .movement-track {
+            height: 40px;
+            background: var(--surface2);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            margin: 16px 0 8px;
+            display: flex;
+            overflow: hidden;
+            position: relative;
+        }
+        .track-seg {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--mono);
+            font-weight: 700;
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.92);
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+            border-right: 1px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+            cursor: default;
+            transition: filter .15s;
+            min-width: 0;
+            overflow: hidden;
+        }
+        .track-seg:last-child {
+            border-right: none;
+        }
+        .track-seg:hover {
+            filter: brightness(1.15);
+        }
+        .track-seg span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            padding: 0 4px;
+        }
+        .track-ruler {
+            position: relative;
+            height: 20px;
+            margin-top: 4px;
+            font-family: var(--mono);
+            font-size: 0.65rem;
+            color: var(--muted);
+            margin-bottom: 14px;
+        }
+        .ruler-tick {
+            position: absolute;
+            transform: translateX(-50%);
+            white-space: nowrap;
+            user-select: none;
+        }
+        .ruler-tick.tick-first {
+            transform: translateX(0);
+        }
+        .ruler-tick.tick-last {
+            transform: translateX(-100%);
+        }
+
+        .sequence-badge {
+            font-family: var(--mono);
+            font-size: 0.8rem;
+            font-weight: 700;
+            padding: 6px 12px;
+            border-radius: 6px;
+            display: inline-block;
+            margin: 8px 0;
+            background: rgba(56, 139, 253, 0.1);
+            border: 1px solid rgba(56, 139, 253, 0.3);
+            color: var(--accent2);
+            word-break: break-word;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem 2rem;
+            text-align: center;
+            color: var(--muted);
+        }
+        .empty-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            opacity: 0.3;
+        }
+        .empty-state p {
+            font-size: 0.85rem;
+            line-height: 1.7;
+            color: var(--dim);
+        }
+        .empty-state strong {
+            color: var(--muted);
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .fade-up {
+            animation: fadeUp 0.4s ease;
+        }
+    </style>
+</head>
+<body>
+    <header class="app-header">
+        <div class="logo-icon">💾</div>
+        <div>
+            <div class="app-name">Disk Scheduling Visualizer</div>
+            <div class="app-sub">OPERATING SYSTEMS · HEAD MOVEMENT · FCFS / SSTF / SCAN / C‑SCAN</div>
+        </div>
+    </header>
+
+    <div class="main-layout">
+        <!-- INPUT PANEL -->
+        <div class="panel">
+            <div class="panel-head">
+                <span class="panel-head-title">⚙️ Configuration</span>
+            </div>
+            <div class="panel-body">
+                <div class="field-label">Algorithm</div>
+                <select class="styled-select" id="algoSel" onchange="onAlgoChange()">
+                    <option value="fcfs">First Come First Serve (FCFS)</option>
+                    <option value="sstf">Shortest Seek Time First (SSTF)</option>
+                    <option value="scan">SCAN (Elevator)</option>
+                    <option value="cscan">C‑SCAN (Circular SCAN)</option>
+                </select>
+
+                <div style="margin-top:16px;">
+                    <label class="field-label">Request Queue (comma separated)</label>
+                    <input type="text" class="mono-input" id="queueInput" style="width:100%;" value="98, 183, 37, 122, 14, 124, 65, 67" placeholder="e.g. 98, 183, 37, 122">
+                </div>
+
+                <div class="field-row" style="margin-top:14px;">
+                    <label>Initial Head</label>
+                    <input type="number" class="mono-input" id="headInput" value="53" min="0">
+                </div>
+
+                <div class="field-row">
+                    <label>Disk Size (cylinders)</label>
+                    <input type="number" class="mono-input" id="diskSizeInput" value="200" min="1">
+                </div>
+
+                <div id="directionRow" class="field-row">
+                    <label>Direction</label>
+                    <select class="styled-select" id="directionSel" style="width:auto; min-width:120px;">
+                        <option value="right">Right (↑ higher)</option>
+                        <option value="left">Left (↓ lower)</option>
+                    </select>
+                </div>
+
+                <div class="info-alert">
+                    💡 Disk cylinders are numbered <strong>0</strong> to <strong>size‑1</strong>. The head moves across the surface to service requests.
+                </div>
+
+                <button class="btn-primary" onclick="solveDisk()">
+                    <span>▶</span> Solve &amp; Visualize
+                </button>
+            </div>
+        </div>
+
+        <!-- OUTPUT PANEL -->
+        <div class="panel" id="outPanel">
+            <div class="panel-head">
+                <span class="panel-head-title">📊 Results</span>
+            </div>
+            <div id="outBody">
+                <div class="empty-state">
+                    <div class="empty-icon">📈</div>
+                    <p>
+                        Enter the request queue, head position,<br>
+                        choose an algorithm, then click<br>
+                        <strong>Solve &amp; Visualize</strong>.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SEG_COLORS = ['#58a6ff', '#f0883e', '#3fb950', '#f85149', '#d2a8ff', '#ffa657', '#79c0ff', '#56d364',
+            '#ff7b72', '#e3b341'
+        ];
+
+        function onAlgoChange() {
+            const algo = document.getElementById('algoSel').value;
+            const dirRow = document.getElementById('directionRow');
+            dirRow.style.display = (algo === 'scan' || algo === 'cscan') ? 'flex' : 'none';
+        }
+
+        function parseQueue(str) {
+            return str.split(',')
+                .map(s => parseInt(s.trim()))
+                .filter(n => !isNaN(n));
+        }
+
+        function solveDisk() {
+            const algo = document.getElementById('algoSel').value;
+            const rawQueue = document.getElementById('queueInput').value;
+            const headStart = parseInt(document.getElementById('headInput').value) || 0;
+            const diskSize = parseInt(document.getElementById('diskSizeInput').value) || 200;
+            const direction = document.getElementById('directionSel')?.value || 'right';
+
+            let requests = parseQueue(rawQueue);
+            if (requests.length === 0) {
+                alert('Please enter at least one valid request.');
+                return;
+            }
+
+            // Validate cylinder bounds
+            if (headStart < 0 || headStart >= diskSize) {
+                alert(`Initial head must be between 0 and ${diskSize - 1}.`);
+                return;
+            }
+            for (let r of requests) {
+                if (r < 0 || r >= diskSize) {
+                    alert(`Request ${r} is out of range (0-${diskSize-1}). Please correct.`);
+                    return;
+                }
+            }
+
+            let sequence = [];
+            let totalMovement = 0;
+            const steps = []; // { from, to, distance }
+
+            switch (algo) {
+                case 'fcfs':
+                    sequence = [...requests];
+                    break;
+                case 'sstf':
+                    sequence = sstf(requests, headStart);
+                    break;
+                case 'scan':
+                    sequence = scan(requests, headStart, diskSize, direction);
+                    break;
+                case 'cscan':
+                    sequence = cscan(requests, headStart, diskSize);
+                    break;
+                default:
+                    sequence = [...requests];
+            }
+
+            // Build movement steps from the sequence, starting from initial head
+            let current = headStart;
+            for (let pos of sequence) {
+                const dist = Math.abs(pos - current);
+                totalMovement += dist;
+                steps.push({ from: current, to: pos, distance: dist });
+                current = pos;
+            }
+
+            renderOutput(algo, headStart, diskSize, sequence, steps, totalMovement);
+        }
+
+        function sstf(requests, head) {
+            const pending = [...requests];
+            const seq = [];
+            let cur = head;
+            while (pending.length > 0) {
+                let bestIdx = 0;
+                let bestDist = Math.abs(pending[0] - cur);
+                for (let i = 1; i < pending.length; i++) {
+                    const d = Math.abs(pending[i] - cur);
+                    if (d < bestDist) {
+                        bestDist = d;
+                        bestIdx = i;
+                    }
+                }
+                seq.push(pending[bestIdx]);
+                cur = pending[bestIdx];
+                pending.splice(bestIdx, 1);
+            }
+            return seq;
+        }
+
+        function scan(requests, head, diskSize, direction) {
+            const maxCyl = diskSize - 1;
+            const left = requests.filter(r => r < head).sort((a, b) => a - b);
+            const right = requests.filter(r => r >= head).sort((a, b) => a - b);
+            const seq = [];
+
+            if (direction === 'right') {
+                // Go right first, service right requests in increasing order
+                seq.push(...right);
+                // Then go to the end (maxCyl) if not already there, but we ignore service beyond last request
+                // Actually SCAN goes to the end, then reverses and services remaining left in decreasing order
+                // So we must include the end movement even if no requests there
+                // But the sequence of serviced requests is: right sorted ascending, then left sorted descending
+                if (right.length === 0 || right[right.length - 1] < maxCyl) {
+                    // No need to add a dummy, it will be captured by movement distance calculation
+                }
+                seq.push(...left.reverse());
+            } else {
+                // Go left first
+                seq.push(...left.reverse());
+                seq.push(...right);
+            }
+            return seq;
+        }
+
+        function cscan(requests, head, diskSize) {
+            const maxCyl = diskSize - 1;
+            const left = requests.filter(r => r < head).sort((a, b) => a - b);
+            const right = requests.filter(r => r >= head).sort((a, b) => a - b);
+            const seq = [];
+
+            // Service right directions in ascending order
+            seq.push(...right);
+            // Then jump to 0 and service left requests in ascending order
+            seq.push(...left);
+
+            return seq;
+        }
+
+        function renderOutput(algo, headStart, diskSize, seq, steps, totalMovement) {
+            const maxCyl = diskSize - 1;
+            const outBody = document.getElementById('outBody');
+
+            // Build movement track visualization
+            let trackHTML = '';
+            // We'll visualize the head path as a series of segments from initial head through each step
+            const totalDist = totalMovement;
+            if (totalDist === 0) {
+                trackHTML =
+                    '<div class="movement-track"><div class="track-seg" style="width:100%; background:#21262d;"><span>No movement</span></div></div>';
+            } else {
+                trackHTML = '<div class="movement-track">';
+                const allPoints = [headStart, ...seq];
+                for (let i = 0; i < allPoints.length - 1; i++) {
+                    const from = allPoints[i];
+                    const to = allPoints[i + 1];
+                    const dist = Math.abs(to - from);
+                    const pct = (dist / totalDist * 100).toFixed(4);
+                    const color = SEG_COLORS[i % SEG_COLORS.length];
+                    trackHTML += `<div class="track-seg" style="width:${pct}%; background:${color};" title="From ${from} → ${to} (${dist})">
+                    <span>${to}</span>
+                  </div>`;
+                }
+                trackHTML += '</div>';
+            }
+
+            // Ruler ticks
+            const tickPoints = [headStart, ...seq];
+            let ticksHTML = '<div class="track-ruler">';
+            const uniqueTicks = [...new Set(tickPoints)].sort((a, b) => a - b);
+            // We'll place ticks at relative positions based on cumulative distance, but simpler: just show start and end
+            ticksHTML +=
+                `<span class="ruler-tick tick-first" style="left:0%;">${headStart}</span>`;
+            ticksHTML +=
+                `<span class="ruler-tick tick-last" style="left:100%;">${seq[seq.length-1]}</span>`;
+            ticksHTML += '</div>';
+
+            // Build step table
+            let stepsHTML = '';
+            for (let i = 0; i < steps.length; i++) {
+                const s = steps[i];
+                stepsHTML += `<tr>
+                <td>${i+1}</td>
+                <td>${s.from} → ${s.to}</td>
+                <td>${s.distance}</td>
+              </tr>`;
+            }
+
+            const algoNames = {
+                'fcfs': 'FCFS',
+                'sstf': 'SSTF',
+                'scan': 'SCAN',
+                'cscan': 'C‑SCAN'
+            };
+            const avgSeek = (totalMovement / seq.length).toFixed(2);
+
+            const outputHTML = `
+            <div class="panel-body fade-up">
+              <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+                <span class="sequence-badge">Algorithm: ${algoNames[algo]}</span>
+                <span style="font-family:var(--mono);font-size:0.7rem;color:var(--muted);">
+                  Head: ${headStart} | Requests: ${seq.length} | Disk: 0–${maxCyl}
+                </span>
+              </div>
+
+              <div class="field-label">📈 Head Movement Track</div>
+              ${trackHTML}
+              ${ticksHTML}
+
+              <div class="divider"></div>
+
+              <div style="overflow-x:auto;">
+                <table class="output-table">
+                  <thead>
+                    <tr>
+                      <th>Step</th>
+                      <th>Movement</th>
+                      <th>Distance</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${stepsHTML}
+                    <tr class="avg-row">
+                      <td colspan="2" style="text-align:right;">Total / Average Seek</td>
+                      <td>${totalMovement} / ${avgSeek}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div style="margin-top:12px;">
+                <span class="sequence-badge">Service Order: ${seq.join(' → ')}</span>
+              </div>
+            </div>
+          `;
+
+            outBody.innerHTML = outputHTML;
+        }
+
+        // Initialize direction visibility
+        onAlgoChange();
+    </script>
+</body>
+</html>
