@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page Replacement Visualizer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --surface2: #1c2333;
+            --border: #30363d;
+            --border2: #21262d;
+            --text: #e6edf3;
+            --muted: #7d8590;
+            --dim: #484f58;
+            --accent: #388bfd;
+            --accent2: #58a6ff;
+            --success: #3fb950;
+            --warn: #d29922;
+            --danger: #f85149;
+            --sans: 'Syne', sans-serif;
+            --mono: 'JetBrains Mono', monospace;
+            --r: 10px;
+            --r-sm: 6px;
+        }
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: var(--sans);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            font-size: 14px;
+        }
+        .app-header {
+            background: #010409;
+            border-bottom: 1px solid var(--border2);
+            padding: 14px 28px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #3fb950, #1f6e2c);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 17px;
+            flex-shrink: 0;
+        }
+        .app-name {
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--text);
+            letter-spacing: -0.01em;
+        }
+        .app-sub {
+            font-family: var(--mono);
+            font-size: 0.62rem;
+            color: var(--muted);
+            letter-spacing: 0.08em;
+            margin-top: 1px;
+        }
+        .main-layout {
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 1.25rem;
+            padding: 1.25rem;
+            max-width: 1440px;
+            margin: 0 auto;
+            align-items: start;
+        }
+        @media (max-width: 900px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            overflow: hidden;
+        }
+        .panel-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border2);
+            background: rgba(255, 255, 255, 0.015);
+        }
+        .panel-head-title {
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+        .panel-body {
+            padding: 18px;
+        }
+        .field-label {
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--muted);
+            display: block;
+            margin-bottom: 6px;
+        }
+        .field-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+        .field-row label {
+            font-size: 0.82rem;
+            color: var(--muted);
+            font-weight: 600;
+        }
+        .mono-input {
+            width: 80px;
+            padding: 8px 10px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--r-sm);
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-align: center;
+            transition: border-color .2s;
+        }
+        .mono-input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(56, 139, 253, 0.15);
+        }
+        .styled-select {
+            width: 100%;
+            padding: 9px 12px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--r-sm);
+            color: var(--text);
+            font-family: var(--sans);
+            font-size: 0.82rem;
+            font-weight: 600;
+            appearance: none;
+            cursor: pointer;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%237d8590'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 30px;
+            transition: border-color .2s;
+        }
+        .styled-select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(56, 139, 253, 0.15);
+        }
+        .btn-primary {
+            width: 100%;
+            padding: 11px 16px;
+            background: var(--accent);
+            border: none;
+            border-radius: var(--r-sm);
+            color: #fff;
+            font-family: var(--sans);
+            font-size: 0.88rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: background .2s, transform .1s;
+        }
+        .btn-primary:hover {
+            background: #1f6feb;
+        }
+        .divider {
+            height: 1px;
+            background: var(--border2);
+            margin: 16px 0;
+        }
+        .info-alert {
+            background: rgba(210, 153, 34, 0.1);
+            border: 1px solid rgba(210, 153, 34, 0.3);
+            border-radius: var(--r-sm);
+            padding: 8px 12px;
+            font-family: var(--mono);
+            font-size: 0.7rem;
+            color: #d29922;
+            line-height: 1.5;
+            margin-bottom: 14px;
+        }
+        .memory-table-container {
+            overflow-x: auto;
+        }
+        .memory-table {
+            border-collapse: collapse;
+            font-family: var(--mono);
+            font-size: 0.75rem;
+            width: auto;
+            min-width: 100%;
+        }
+        .memory-table th,
+        .memory-table td {
+            padding: 6px 8px;
+            text-align: center;
+            border: 1px solid var(--border2);
+        }
+        .memory-table th {
+            background: var(--surface2);
+            color: var(--muted);
+            font-weight: 600;
+            letter-spacing: 0.05em;
+        }
+        .fault-cell {
+            background: rgba(248, 81, 73, 0.2);
+            color: var(--danger);
+            font-weight: 700;
+        }
+        .hit-cell {
+            background: rgba(63, 185, 80, 0.12);
+            color: var(--success);
+            font-weight: 700;
+        }
+        .empty-cell {
+            color: var(--dim);
+        }
+        .stats-row {
+            display: flex;
+            gap: 12px;
+            margin-top: 14px;
+            flex-wrap: wrap;
+        }
+        .stat-card {
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            border-radius: 8px;
+            padding: 12px 16px;
+            flex: 1;
+            min-width: 120px;
+        }
+        .sc-label {
+            font-family: var(--mono);
+            font-size: 0.6rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 4px;
+        }
+        .sc-value {
+            font-family: var(--mono);
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent2);
+        }
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem 2rem;
+            text-align: center;
+            color: var(--muted);
+        }
+        .empty-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            opacity: 0.3;
+        }
+        .empty-state p {
+            font-size: 0.85rem;
+            line-height: 1.7;
+            color: var(--dim);
+        }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-up {
+            animation: fadeUp 0.4s ease;
+        }
+    </style>
+</head>
+<body>
+<header class="app-header">
+    <div class="logo-icon">🧠</div>
+    <div>
+        <div class="app-name">Page Replacement Visualizer</div>
+        <div class="app-sub">MEMORY MANAGEMENT · FIFO / LRU / OPTIMAL</div>
+    </div>
+</header>
+
+<div class="main-layout">
+    <!-- INPUT PANEL -->
+    <div class="panel">
+        <div class="panel-head">
+            <span class="panel-head-title">⚙️ Configuration</span>
+        </div>
+        <div class="panel-body">
+            <div class="field-label">Algorithm</div>
+            <select class="styled-select" id="algoSel">
+                <option value="fifo">First In First Out (FIFO)</option>
+                <option value="lru">Least Recently Used (LRU)</option>
+                <option value="optimal">Optimal (MIN)</option>
+            </select>
+
+            <div style="margin-top:16px;">
+                <label class="field-label">Reference String (space/comma separated)</label>
+                <input type="text" class="mono-input" id="refInput" style="width:100%;" value="7 0 1 2 0 3 0 4 2 3 0 3 2 1 2 0 1 7 0 1" placeholder="e.g. 7 0 1 2 0 3 ...">
+            </div>
+
+            <div class="field-row" style="margin-top:14px;">
+                <label>Frames</label>
+                <input type="number" class="mono-input" id="framesInput" value="3" min="1" max="10">
+            </div>
+
+            <div class="info-alert">
+                💡 <strong>Optimal</strong> replaces the page that will not be used for the longest time in the future.
+            </div>
+
+            <button class="btn-primary" onclick="simulate()">
+                <span>▶</span> Simulate
+            </button>
+        </div>
+    </div>
+
+    <!-- OUTPUT PANEL -->
+    <div class="panel" id="outPanel">
+        <div class="panel-head">
+            <span class="panel-head-title">📊 Simulation Result</span>
+        </div>
+        <div id="outBody">
+            <div class="empty-state">
+                <div class="empty-icon">📄</div>
+                <p>Enter a reference string and frame count,<br>then click <strong>Simulate</strong>.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function parseReference(str) {
+        return str.split(/[\s,]+/).map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+    }
+
+    function simulate() {
+        const algo = document.getElementById('algoSel').value;
+        const refStr = document.getElementById('refInput').value;
+        const frames = parseInt(document.getElementById('framesInput').value) || 3;
+        const ref = parseReference(refStr);
+        if (ref.length === 0) {
+            alert('Please enter a valid reference string.');
+            return;
+        }
+
+        let memory = [];
+        let pageFaults = 0;
+        const steps = []; // each step: { page, fault, memoryState, evicted? }
+
+        // Helper to check if page is in memory
+        const inMemory = (page) => memory.includes(page);
+
+        // Implementation for each algorithm
+        if (algo === 'fifo') {
+            let fifoQueue = [];
+            for (const page of ref) {
+                const fault = !inMemory(page);
+                if (fault) {
+                    pageFaults++;
+                    if (memory.length < frames) {
+                        memory.push(page);
+                        fifoQueue.push(page);
+                    } else {
+                        const evicted = fifoQueue.shift();
+                        const idx = memory.indexOf(evicted);
+                        memory.splice(idx, 1);
+                        memory.push(page);
+                        fifoQueue.push(page);
+                    }
+                }
+                steps.push({ page, fault, memory: [...memory] });
+            }
+        } else if (algo === 'lru') {
+            // Use a list to track recency, most recent at end
+            let lruList = [];
+            for (const page of ref) {
+                const fault = !inMemory(page);
+                if (fault) {
+                    pageFaults++;
+                    if (memory.length < frames) {
+                        memory.push(page);
+                        lruList.push(page);
+                    } else {
+                        const evicted = lruList.shift(); // least recently used
+                        const idx = memory.indexOf(evicted);
+                        memory.splice(idx, 1);
+                        memory.push(page);
+                        lruList.push(page);
+                    }
+                } else {
+                    // Move to most recently used position
+                    lruList = lruList.filter(p => p !== page);
+                    lruList.push(page);
+                }
+                steps.push({ page, fault, memory: [...memory] });
+            }
+        } else if (algo === 'optimal') {
+            for (let i = 0; i < ref.length; i++) {
+                const page = ref[i];
+                const fault = !inMemory(page);
+                if (fault) {
+                    pageFaults++;
+                    if (memory.length < frames) {
+                        memory.push(page);
+                    } else {
+                        // Find page to replace: look into future, pick the one with farthest next use (or never)
+                        let farthestIdx = -1;
+                        let victim = memory[0];
+                        for (const m of memory) {
+                            const nextUse = ref.slice(i + 1).indexOf(m);
+                            if (nextUse === -1) {
+                                victim = m;
+                                break;
+                            }
+                            if (nextUse > farthestIdx) {
+                                farthestIdx = nextUse;
+                                victim = m;
+                            }
+                        }
+                        const idx = memory.indexOf(victim);
+                        memory.splice(idx, 1);
+                        memory.push(page);
+                    }
+                }
+                steps.push({ page, fault, memory: [...memory] });
+            }
+        }
+
+        renderOutput(algo, ref, frames, steps, pageFaults);
+    }
+
+    function renderOutput(algo, ref, frames, steps, totalFaults) {
+        const outBody = document.getElementById('outBody');
+        const algoNames = { 'fifo': 'FIFO', 'lru': 'LRU', 'optimal': 'Optimal' };
+
+        // Build table header: reference string steps
+        let headerRow = '<tr><th>Step</th>';
+        for (let i = 0; i < ref.length; i++) {
+            headerRow += `<th>${i}</th>`;
+        }
+        headerRow += '</tr>';
+
+        let pageRow = '<tr><td style="font-weight:700;">Page</td>';
+        for (const p of ref) pageRow += `<td style="color:var(--accent2);">${p}</td>`;
+        pageRow += '</tr>';
+
+        let faultRow = '<tr><td style="font-weight:700;">Fault?</td>';
+        for (const s of steps) {
+            faultRow += `<td class="${s.fault ? 'fault-cell' : 'hit-cell'}">${s.fault ? '❌' : '✔'}</td>`;
+        }
+        faultRow += '</tr>';
+
+        // Memory state rows: for each frame, show the page present at each step
+        let memoryRows = '';
+        for (let f = 0; f < frames; f++) {
+            memoryRows += `<tr><td style="font-weight:700;color:var(--muted);">Frame ${f}</td>`;
+            for (const s of steps) {
+                const val = s.memory[f] !== undefined ? s.memory[f] : '-';
+                memoryRows += `<td class="${s.fault ? 'fault-cell' : ''}">${val}</td>`;
+            }
+            memoryRows += '</tr>';
+        }
+
+        const hitCount = ref.length - totalFaults;
+        const faultRate = ((totalFaults / ref.length) * 100).toFixed(1);
+
+        const outputHTML = `
+        <div class="panel-body fade-up">
+            <div class="field-label">${algoNames[algo]} Algorithm · Frames: ${frames} · Reference length: ${ref.length}</div>
+            <div class="memory-table-container">
+                <table class="memory-table">
+                    <thead>${headerRow}</thead>
+                    <tbody>${pageRow}${faultRow}${memoryRows}</tbody>
+                </table>
+            </div>
+            <div class="stats-row">
+                <div class="stat-card">
+                    <div class="sc-label">Page Faults</div>
+                    <div class="sc-value">${totalFaults}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="sc-label">Hits</div>
+                    <div class="sc-value">${hitCount}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="sc-label">Fault Rate</div>
+                    <div class="sc-value">${faultRate}%</div>
+                </div>
+            </div>
+        </div>`;
+
+        outBody.innerHTML = outputHTML;
+    }
+</script>
+</body>
+</html>
