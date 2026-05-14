@@ -248,7 +248,22 @@
             margin-bottom: 14px;
         }
 
-        /* Output styles */
+        /* Graph container */
+        .graph-container {
+            width: 100%;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            padding: 12px;
+            margin-bottom: 16px;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            background: transparent;
+        }
+
         .output-table {
             width: 100%;
             border-collapse: collapse;
@@ -290,67 +305,6 @@
             border-top: 1px solid var(--border);
             border-bottom: none;
             font-size: 0.79rem;
-        }
-
-        .movement-track {
-            height: 40px;
-            background: var(--surface2);
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            margin: 16px 0 8px;
-            display: flex;
-            overflow: hidden;
-            position: relative;
-        }
-        .track-seg {
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-family: var(--mono);
-            font-weight: 700;
-            font-size: 0.7rem;
-            color: rgba(255, 255, 255, 0.92);
-            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
-            border-right: 1px solid rgba(255, 255, 255, 0.2);
-            position: relative;
-            cursor: default;
-            transition: filter .15s;
-            min-width: 0;
-            overflow: hidden;
-        }
-        .track-seg:last-child {
-            border-right: none;
-        }
-        .track-seg:hover {
-            filter: brightness(1.15);
-        }
-        .track-seg span {
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            padding: 0 4px;
-        }
-        .track-ruler {
-            position: relative;
-            height: 20px;
-            margin-top: 4px;
-            font-family: var(--mono);
-            font-size: 0.65rem;
-            color: var(--muted);
-            margin-bottom: 14px;
-        }
-        .ruler-tick {
-            position: absolute;
-            transform: translateX(-50%);
-            white-space: nowrap;
-            user-select: none;
-        }
-        .ruler-tick.tick-first {
-            transform: translateX(0);
-        }
-        .ruler-tick.tick-last {
-            transform: translateX(-100%);
         }
 
         .sequence-badge {
@@ -481,14 +435,19 @@
     </div>
 
     <script>
-        const SEG_COLORS = ['#58a6ff', '#f0883e', '#3fb950', '#f85149', '#d2a8ff', '#ffa657', '#79c0ff', '#56d364',
-            '#ff7b72', '#e3b341'
-        ];
+        const GRAPH_COLORS = {
+            line: '#58a6ff',
+            point: '#f0883e',
+            grid: '#30363d',
+            text: '#7d8590',
+            axis: '#484f58',
+            highlight: '#d29922'
+        };
 
         function onAlgoChange() {
             const algo = document.getElementById('algoSel').value;
-            const dirRow = document.getElementById('directionRow');
-            dirRow.style.display = (algo === 'scan' || algo === 'cscan') ? 'flex' : 'none';
+            document.getElementById('directionRow').style.display = (algo === 'scan' || algo === 'cscan') ? 'flex' :
+                'none';
         }
 
         function parseQueue(str) {
@@ -510,7 +469,6 @@
                 return;
             }
 
-            // Validate cylinder bounds
             if (headStart < 0 || headStart >= diskSize) {
                 alert(`Initial head must be between 0 and ${diskSize - 1}.`);
                 return;
@@ -523,9 +481,6 @@
             }
 
             let sequence = [];
-            let totalMovement = 0;
-            const steps = []; // { from, to, distance }
-
             switch (algo) {
                 case 'fcfs':
                     sequence = [...requests];
@@ -543,9 +498,11 @@
                     sequence = [...requests];
             }
 
-            // Build movement steps from the sequence, starting from initial head
+            // Build movement steps: from initial head through sequence
+            const steps = [];
             let current = headStart;
-            for (let pos of sequence) {
+            let totalMovement = 0;
+            for (const pos of sequence) {
                 const dist = Math.abs(pos - current);
                 totalMovement += dist;
                 steps.push({ from: current, to: pos, distance: dist });
@@ -583,18 +540,12 @@
             const seq = [];
 
             if (direction === 'right') {
-                // Go right first, service right requests in increasing order
                 seq.push(...right);
-                // Then go to the end (maxCyl) if not already there, but we ignore service beyond last request
-                // Actually SCAN goes to the end, then reverses and services remaining left in decreasing order
-                // So we must include the end movement even if no requests there
-                // But the sequence of serviced requests is: right sorted ascending, then left sorted descending
-                if (right.length === 0 || right[right.length - 1] < maxCyl) {
-                    // No need to add a dummy, it will be captured by movement distance calculation
-                }
+                // When reversing, we don't add dummy end cylinder unless there are left requests.
+                // If there are left requests, the head goes to the end then back, but the graph will simply connect
+                // the last right request to the first left request (which is the largest left) – that's correct.
                 seq.push(...left.reverse());
             } else {
-                // Go left first
                 seq.push(...left.reverse());
                 seq.push(...right);
             }
@@ -606,12 +557,10 @@
             const left = requests.filter(r => r < head).sort((a, b) => a - b);
             const right = requests.filter(r => r >= head).sort((a, b) => a - b);
             const seq = [];
-
-            // Service right directions in ascending order
             seq.push(...right);
-            // Then jump to 0 and service left requests in ascending order
+            // Jump from last right (or maxCyl if needed) to 0 is implicit in movement distance,
+            // but we don't insert 0 unless there are left requests.
             seq.push(...left);
-
             return seq;
         }
 
@@ -619,50 +568,9 @@
             const maxCyl = diskSize - 1;
             const outBody = document.getElementById('outBody');
 
-            // Build movement track visualization
-            let trackHTML = '';
-            // We'll visualize the head path as a series of segments from initial head through each step
-            const totalDist = totalMovement;
-            if (totalDist === 0) {
-                trackHTML =
-                    '<div class="movement-track"><div class="track-seg" style="width:100%; background:#21262d;"><span>No movement</span></div></div>';
-            } else {
-                trackHTML = '<div class="movement-track">';
-                const allPoints = [headStart, ...seq];
-                for (let i = 0; i < allPoints.length - 1; i++) {
-                    const from = allPoints[i];
-                    const to = allPoints[i + 1];
-                    const dist = Math.abs(to - from);
-                    const pct = (dist / totalDist * 100).toFixed(4);
-                    const color = SEG_COLORS[i % SEG_COLORS.length];
-                    trackHTML += `<div class="track-seg" style="width:${pct}%; background:${color};" title="From ${from} → ${to} (${dist})">
-                    <span>${to}</span>
-                  </div>`;
-                }
-                trackHTML += '</div>';
-            }
-
-            // Ruler ticks
-            const tickPoints = [headStart, ...seq];
-            let ticksHTML = '<div class="track-ruler">';
-            const uniqueTicks = [...new Set(tickPoints)].sort((a, b) => a - b);
-            // We'll place ticks at relative positions based on cumulative distance, but simpler: just show start and end
-            ticksHTML +=
-                `<span class="ruler-tick tick-first" style="left:0%;">${headStart}</span>`;
-            ticksHTML +=
-                `<span class="ruler-tick tick-last" style="left:100%;">${seq[seq.length-1]}</span>`;
-            ticksHTML += '</div>';
-
-            // Build step table
-            let stepsHTML = '';
-            for (let i = 0; i < steps.length; i++) {
-                const s = steps[i];
-                stepsHTML += `<tr>
-                <td>${i+1}</td>
-                <td>${s.from} → ${s.to}</td>
-                <td>${s.distance}</td>
-              </tr>`;
-            }
+            // Build the graph data: positions over steps (index 0 = initial head, then each service point)
+            const positions = [headStart, ...seq];
+            const totalSteps = seq.length; // number of service movements
 
             const algoNames = {
                 'fcfs': 'FCFS',
@@ -670,8 +578,8 @@
                 'scan': 'SCAN',
                 'cscan': 'C‑SCAN'
             };
-            const avgSeek = (totalMovement / seq.length).toFixed(2);
 
+            // Create HTML with canvas placeholder and table
             const outputHTML = `
             <div class="panel-body fade-up">
               <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
@@ -681,9 +589,9 @@
                 </span>
               </div>
 
-              <div class="field-label">📈 Head Movement Track</div>
-              ${trackHTML}
-              ${ticksHTML}
+              <div class="graph-container">
+                <canvas id="headPlot" style="width:100%; height:300px;"></canvas>
+              </div>
 
               <div class="divider"></div>
 
@@ -697,10 +605,15 @@
                     </tr>
                   </thead>
                   <tbody>
-                    ${stepsHTML}
+                    ${steps.map((s, i) => `
+                    <tr>
+                      <td>${i+1}</td>
+                      <td>${s.from} → ${s.to}</td>
+                      <td>${s.distance}</td>
+                    </tr>`).join('')}
                     <tr class="avg-row">
                       <td colspan="2" style="text-align:right;">Total / Average Seek</td>
-                      <td>${totalMovement} / ${avgSeek}</td>
+                      <td>${totalMovement} / ${(totalMovement / seq.length).toFixed(2)}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -713,9 +626,132 @@
           `;
 
             outBody.innerHTML = outputHTML;
+
+            // Draw the graph after the canvas is in the DOM
+            setTimeout(() => drawGraph(positions, maxCyl, algoNames[algo]), 20);
         }
 
-        // Initialize direction visibility
+        function drawGraph(positions, maxCyl, algoName) {
+            const canvas = document.getElementById('headPlot');
+            if (!canvas) return;
+
+            const ctx = canvas.getContext('2d');
+            const container = canvas.parentNode;
+            const width = container.clientWidth - 24; // account for padding
+            const height = 300;
+
+            // Set canvas size in pixels for sharp rendering
+            canvas.width = width * window.devicePixelRatio;
+            canvas.height = height * window.devicePixelRatio;
+            canvas.style.width = width + 'px';
+            canvas.style.height = height + 'px';
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+            // Clear
+            ctx.clearRect(0, 0, width, height);
+
+            // Margins
+            const margin = { top: 20, right: 30, bottom: 40, left: 60 };
+            const plotWidth = width - margin.left - margin.right;
+            const plotHeight = height - margin.top - margin.bottom;
+
+            // Scales
+            const xMin = 0;
+            const xMax = positions.length - 1; // step indices
+            const yMin = 0;
+            const yMax = maxCyl;
+
+            const scaleX = (x) => margin.left + (x - xMin) / (xMax - xMin || 1) * plotWidth;
+            const scaleY = (y) => margin.top + plotHeight - (y - yMin) / (yMax - yMin || 1) * plotHeight;
+
+            // Draw grid lines
+            ctx.strokeStyle = GRAPH_COLORS.grid;
+            ctx.lineWidth = 0.5;
+            ctx.font = '10px "JetBrains Mono"';
+            ctx.fillStyle = GRAPH_COLORS.text;
+
+            // Vertical grid lines at each step
+            for (let i = 0; i <= xMax; i++) {
+                const x = scaleX(i);
+                ctx.beginPath();
+                ctx.moveTo(x, margin.top);
+                ctx.lineTo(x, margin.top + plotHeight);
+                ctx.stroke();
+                if (i % Math.max(1, Math.ceil(positions.length / 10)) === 0 || i === xMax) {
+                    ctx.fillText(i, x - 8, margin.top + plotHeight + 15);
+                }
+            }
+
+            // Horizontal grid lines (every 20 cylinders or so)
+            const yStep = Math.max(1, Math.floor(maxCyl / 8));
+            for (let y = 0; y <= maxCyl; y += yStep) {
+                const yPos = scaleY(y);
+                ctx.beginPath();
+                ctx.moveTo(margin.left, yPos);
+                ctx.lineTo(margin.left + plotWidth, yPos);
+                ctx.stroke();
+                ctx.fillText(y, margin.left - 35, yPos + 4);
+            }
+
+            // Axes
+            ctx.strokeStyle = GRAPH_COLORS.axis;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(margin.left, margin.top);
+            ctx.lineTo(margin.left, margin.top + plotHeight);
+            ctx.lineTo(margin.left + plotWidth, margin.top + plotHeight);
+            ctx.stroke();
+
+            // Axis labels
+            ctx.fillStyle = GRAPH_COLORS.text;
+            ctx.font = '12px "Syne"';
+            ctx.textAlign = 'center';
+            ctx.fillText('Service Step', margin.left + plotWidth / 2, margin.top + plotHeight + 30);
+            ctx.save();
+            ctx.translate(margin.left - 50, margin.top + plotHeight / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText('Cylinder', 0, 0);
+            ctx.restore();
+
+            // Title
+            ctx.fillStyle = GRAPH_COLORS.text;
+            ctx.font = 'bold 13px "Syne"';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${algoName} – Head Movement`, margin.left + plotWidth / 2, margin.top - 5);
+
+            // Draw line connecting points
+            ctx.strokeStyle = GRAPH_COLORS.line;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for (let i = 0; i < positions.length; i++) {
+                const x = scaleX(i);
+                const y = scaleY(positions[i]);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+
+            // Draw points
+            for (let i = 0; i < positions.length; i++) {
+                const x = scaleX(i);
+                const y = scaleY(positions[i]);
+                ctx.fillStyle = i === 0 ? GRAPH_COLORS.highlight : GRAPH_COLORS.point;
+                ctx.beginPath();
+                ctx.arc(x, y, 4, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                // Label point with cylinder number
+                ctx.fillStyle = GRAPH_COLORS.text;
+                ctx.font = '9px "JetBrains Mono"';
+                ctx.textAlign = 'center';
+                ctx.fillText(positions[i], x, y - 8);
+            }
+        }
+
+        // Initial call
         onAlgoChange();
     </script>
 </body>
