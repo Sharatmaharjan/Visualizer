@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Allocation Visualizer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --surface2: #1c2333;
+            --border: #30363d;
+            --border2: #21262d;
+            --text: #e6edf3;
+            --muted: #7d8590;
+            --dim: #484f58;
+            --accent: #388bfd;
+            --accent2: #58a6ff;
+            --success: #3fb950;
+            --warn: #d29922;
+            --danger: #f85149;
+            --sans: 'Syne', sans-serif;
+            --mono: 'JetBrains Mono', monospace;
+            --r: 10px;
+            --r-sm: 6px;
+        }
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: var(--sans);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            font-size: 14px;
+        }
+        .app-header {
+            background: #010409;
+            border-bottom: 1px solid var(--border2);
+            padding: 14px 28px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #d29922, #b08800);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 17px;
+            flex-shrink: 0;
+        }
+        .app-name {
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--text);
+            letter-spacing: -0.01em;
+        }
+        .app-sub {
+            font-family: var(--mono);
+            font-size: 0.62rem;
+            color: var(--muted);
+            letter-spacing: 0.08em;
+            margin-top: 1px;
+        }
+        .main-layout {
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 1.25rem;
+            padding: 1.25rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            align-items: start;
+        }
+        @media (max-width: 900px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            overflow: hidden;
+        }
+        .panel-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border2);
+            background: rgba(255, 255, 255, 0.015);
+        }
+        .panel-head-title {
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+        .panel-body {
+            padding: 18px;
+        }
+        .field-label {
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--muted);
+            display: block;
+            margin-bottom: 6px;
+        }
+        .field-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+        .field-row label {
+            font-size: 0.82rem;
+            color: var(--muted);
+            font-weight: 600;
+        }
+        .mono-input {
+            width: 100%;
+            padding: 8px 10px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--r-sm);
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: border-color .2s;
+        }
+        .mono-input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(56, 139, 253, 0.15);
+        }
+        .styled-select {
+            width: 100%;
+            padding: 9px 12px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--r-sm);
+            color: var(--text);
+            font-family: var(--sans);
+            font-size: 0.82rem;
+            font-weight: 600;
+            appearance: none;
+            cursor: pointer;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%237d8590'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 30px;
+            transition: border-color .2s;
+        }
+        .styled-select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(56, 139, 253, 0.15);
+        }
+        .btn-primary {
+            width: 100%;
+            padding: 11px 16px;
+            background: var(--accent);
+            border: none;
+            border-radius: var(--r-sm);
+            color: #fff;
+            font-family: var(--sans);
+            font-size: 0.88rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: background .2s, transform .1s;
+            margin-bottom: 8px;
+        }
+        .btn-primary:hover {
+            background: #1f6feb;
+        }
+        .btn-secondary {
+            width: 100%;
+            padding: 11px 16px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--r-sm);
+            color: var(--accent2);
+            font-family: var(--sans);
+            font-size: 0.88rem;
+            font-weight: 800;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: background .2s, border-color .2s;
+        }
+        .btn-secondary:hover {
+            border-color: var(--accent);
+            background: rgba(56, 139, 253, 0.08);
+        }
+        .divider {
+            height: 1px;
+            background: var(--border2);
+            margin: 16px 0;
+        }
+        .info-alert {
+            background: rgba(210, 153, 34, 0.1);
+            border: 1px solid rgba(210, 153, 34, 0.3);
+            border-radius: var(--r-sm);
+            padding: 8px 12px;
+            font-family: var(--mono);
+            font-size: 0.7rem;
+            color: #d29922;
+            line-height: 1.5;
+            margin-bottom: 14px;
+        }
+        .output-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: var(--mono);
+            font-size: 0.8rem;
+        }
+        .output-table th {
+            background: var(--surface2);
+            color: var(--muted);
+            padding: 8px 10px;
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+            font-weight: 700;
+            letter-spacing: 0.05em;
+        }
+        .output-table td {
+            padding: 7px 10px;
+            text-align: center;
+            border-bottom: 1px solid var(--border2);
+        }
+        .output-table tr:last-child td {
+            border-bottom: none;
+        }
+        .hole-cell {
+            font-weight: 700;
+            color: var(--accent2);
+        }
+        .fault-cell {
+            background: rgba(248, 81, 73, 0.12);
+            color: var(--danger);
+        }
+        .hit-cell {
+            background: rgba(63, 185, 80, 0.08);
+            color: var(--success);
+        }
+        .compare-table {
+            width: auto;
+            min-width: 100%;
+            border-collapse: collapse;
+            font-family: var(--mono);
+            font-size: 0.8rem;
+        }
+        .compare-table th,
+        .compare-table td {
+            padding: 10px 14px;
+            text-align: center;
+            border: 1px solid var(--border2);
+        }
+        .compare-table th {
+            background: var(--surface2);
+            color: var(--muted);
+            letter-spacing: 0.05em;
+        }
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem 2rem;
+            text-align: center;
+            color: var(--muted);
+        }
+        .empty-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            opacity: 0.3;
+        }
+        .empty-state p {
+            font-size: 0.85rem;
+            line-height: 1.7;
+            color: var(--dim);
+        }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-up {
+            animation: fadeUp 0.4s ease;
+        }
+    </style>
+</head>
+<body>
+<header class="app-header">
+    <div class="logo-icon">🧩</div>
+    <div>
+        <div class="app-name">Memory Allocation Visualizer</div>
+        <div class="app-sub">VARIABLE PARTITIONS · FIRST FIT / NEXT FIT / BEST FIT / WORST FIT</div>
+    </div>
+</header>
+
+<div class="main-layout">
+    <!-- INPUT PANEL -->
+    <div class="panel">
+        <div class="panel-head">
+            <span class="panel-head-title">⚙️ Configuration</span>
+        </div>
+        <div class="panel-body">
+            <div class="field-label">Algorithm</div>
+            <select class="styled-select" id="algoSel">
+                <option value="first">First Fit</option>
+                <option value="next">Next Fit</option>
+                <option value="best">Best Fit</option>
+                <option value="worst">Worst Fit</option>
+            </select>
+
+            <div style="margin-top:16px;">
+                <label class="field-label">Hole sizes (MB, comma separated)</label>
+                <input type="text" class="mono-input" id="holesInput" value="15, 2, 10, 6, 8, 20" placeholder="e.g. 15, 2, 10, 6, 8, 20">
+            </div>
+
+            <div style="margin-top:14px;">
+                <label class="field-label">Segment requests (MB, comma separated)</label>
+                <input type="text" class="mono-input" id="reqInput" value="10, 10" placeholder="e.g. 10, 10">
+            </div>
+
+            <div class="info-alert">
+                💡 Memory holes are ordered as given. <strong>Next Fit</strong> starts searching after the last allocated block.
+            </div>
+
+            <button class="btn-primary" onclick="simulateSingle()">
+                <span>▶</span> Simulate Selected Algorithm
+            </button>
+            <button class="btn-secondary" onclick="compareAll()">
+                <span>🔍</span> Compare All Algorithms
+            </button>
+        </div>
+    </div>
+
+    <!-- OUTPUT PANEL -->
+    <div class="panel" id="outPanel">
+        <div class="panel-head">
+            <span class="panel-head-title">📊 Simulation Result</span>
+        </div>
+        <div id="outBody">
+            <div class="empty-state">
+                <div class="empty-icon">📦</div>
+                <p>Enter hole sizes and segment requests,<br>then choose <strong>Simulate</strong> or <strong>Compare All</strong>.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function parseNumbers(str) {
+        return str.split(/[\s,]+/).map(s => parseInt(s.trim())).filter(n => !isNaN(n) && n > 0);
+    }
+
+    // Allocate a request using given holes array (will be cloned) and algorithm
+    function simulateAlgorithm(holes, requests, algorithm) {
+        const freeBlocks = holes.map((size, idx) => ({ id: idx, size }));
+        const result = [];
+        let nextFitPointer = 0; // for next fit only
+
+        for (const req of requests) {
+            let chosenIdx = -1;
+
+            if (algorithm === 'first') {
+                chosenIdx = freeBlocks.findIndex(block => block.size >= req);
+            } else if (algorithm === 'next') {
+                for (let i = 0; i < freeBlocks.length; i++) {
+                    const idx = (nextFitPointer + i) % freeBlocks.length;
+                    if (freeBlocks[idx].size >= req) {
+                        chosenIdx = idx;
+                        break;
+                    }
+                }
+            } else if (algorithm === 'best') {
+                let bestIdx = -1;
+                let bestSize = Infinity;
+                freeBlocks.forEach((block, i) => {
+                    if (block.size >= req && block.size < bestSize) {
+                        bestSize = block.size;
+                        bestIdx = i;
+                    }
+                });
+                chosenIdx = bestIdx;
+            } else if (algorithm === 'worst') {
+                let worstIdx = -1;
+                let worstSize = -1;
+                freeBlocks.forEach((block, i) => {
+                    if (block.size >= req && block.size > worstSize) {
+                        worstSize = block.size;
+                        worstIdx = i;
+                    }
+                });
+                chosenIdx = worstIdx;
+            }
+
+            if (chosenIdx === -1) {
+                result.push({
+                    request: req,
+                    holeTaken: null,
+                    holeSizeBefore: null,
+                    freeBlocksAfter: freeBlocks.map(b => b.size),
+                    success: false
+                });
+                continue;
+            }
+
+            const block = freeBlocks[chosenIdx];
+            const takenSize = block.size;
+            block.size -= req;
+
+            if (block.size === 0) {
+                freeBlocks.splice(chosenIdx, 1);
+                if (algorithm === 'next' && nextFitPointer >= chosenIdx) {
+                    nextFitPointer = Math.max(0, nextFitPointer - 1);
+                }
+            } else {
+                if (algorithm === 'next') {
+                    nextFitPointer = (chosenIdx + 1) % freeBlocks.length;
+                }
+            }
+
+            result.push({
+                request: req,
+                holeTaken: takenSize,
+                holeSizeBefore: takenSize,
+                freeBlocksAfter: freeBlocks.map(b => b.size),
+                success: true
+            });
+        }
+        return result;
+    }
+
+    function simulateSingle() {
+        const algoKey = document.getElementById('algoSel').value;
+        const algoNames = { 'first': 'First Fit', 'next': 'Next Fit', 'best': 'Best Fit', 'worst': 'Worst Fit' };
+        const holes = parseNumbers(document.getElementById('holesInput').value);
+        const requests = parseNumbers(document.getElementById('reqInput').value);
+
+        if (holes.length === 0 || requests.length === 0) {
+            alert('Please enter valid hole sizes and segment requests.');
+            return;
+        }
+
+        const steps = simulateAlgorithm(holes, requests, algoKey);
+        renderSingleOutput(algoNames[algoKey], holes, steps);
+    }
+
+    function renderSingleOutput(algoName, initialHoles, steps) {
+        const outBody = document.getElementById('outBody');
+        let html = `<div class="panel-body fade-up">
+            <div class="field-label">${algoName} · Initial holes: [${initialHoles.join(', ')}]</div>
+            <div style="overflow-x:auto;">
+                <table class="output-table">
+                    <thead>
+                        <tr>
+                            <th>Step</th>
+                            <th>Request (MB)</th>
+                            <th>Hole Taken (MB)</th>
+                            <th>Memory after allocation</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+
+        for (let i = 0; i < steps.length; i++) {
+            const s = steps[i];
+            const taken = s.success ? s.holeTaken : '❌ Failed';
+            const state = s.freeBlocksAfter.length ? s.freeBlocksAfter.join(', ') : 'none';
+            html += `<tr>
+                <td>${i + 1}</td>
+                <td>${s.request}</td>
+                <td class="${s.success ? 'hole-cell' : 'fault-cell'}">${taken}</td>
+                <td>[${state}]</td>
+            </tr>`;
+        }
+
+        html += `</tbody></table></div></div>`;
+        outBody.innerHTML = html;
+    }
+
+    function compareAll() {
+        const holes = parseNumbers(document.getElementById('holesInput').value);
+        const requests = parseNumbers(document.getElementById('reqInput').value);
+        if (holes.length === 0 || requests.length === 0) {
+            alert('Please enter valid hole sizes and segment requests.');
+            return;
+        }
+
+        const algorithms = ['first', 'next', 'best', 'worst'];
+        const algoNames = { 'first': 'First Fit', 'next': 'Next Fit', 'best': 'Best Fit', 'worst': 'Worst Fit' };
+        const results = {};
+
+        for (const algo of algorithms) {
+            results[algo] = simulateAlgorithm(holes, requests, algo);
+        }
+
+        renderCompareOutput(algoNames, initialHoles = holes, requests, results);
+    }
+
+    function renderCompareOutput(algoNames, initialHoles, requests, results) {
+        const outBody = document.getElementById('outBody');
+        let html = `<div class="panel-body fade-up">
+            <div class="field-label">Comparison · Initial holes: [${initialHoles.join(', ')}]</div>
+            <div style="overflow-x:auto;">
+                <table class="compare-table">
+                    <thead>
+                        <tr>
+                            <th>Algorithm</th>`;
+        for (let i = 0; i < requests.length; i++) {
+            html += `<th>Req ${i + 1}<br>(${requests[i]} MB)</th>`;
+        }
+        html += `<th>Final Free Holes</th></tr></thead><tbody>`;
+
+        for (const algo of ['first', 'next', 'best', 'worst']) {
+            html += `<tr><td style="font-weight:700;">${algoNames[algo]}</td>`;
+            for (const step of results[algo]) {
+                const taken = step.success ? step.holeTaken : '❌';
+                html += `<td class="${step.success ? 'hit-cell' : 'fault-cell'}">${taken}</td>`;
+            }
+            const finalState = results[algo].length > 0 ? results[algo][results[algo].length - 1].freeBlocksAfter : initialHoles;
+            html += `<td>[${finalState.join(', ')}]</td></tr>`;
+        }
+        html += `</tbody></table></div></div>`;
+        outBody.innerHTML = html;
+    }
+</script>
+</body>
+</html>
