@@ -295,7 +295,7 @@
     <div class="logo-icon">🧠</div>
     <div>
         <div class="app-name">Page Replacement Visualizer</div>
-        <div class="app-sub">MEMORY MANAGEMENT · FIFO / LRU / OPTIMAL / CLOCK / LFU</div>
+        <div class="app-sub">MEMORY MANAGEMENT · FIFO / LRU / MRU / OPTIMAL / CLOCK / LFU</div>
     </div>
 </header>
 
@@ -309,6 +309,7 @@
             <select class="styled-select" id="algoSel">
                 <option value="fifo">First In First Out (FIFO)</option>
                 <option value="lru">Least Recently Used (LRU)</option>
+                <option value="mru">Most Recently Used (MRU)</option>
                 <option value="optimal">Optimal (MIN)</option>
                 <option value="clock">Clock (Second Chance)</option>
                 <option value="lfu">Least Frequently Used (LFU)</option>
@@ -325,8 +326,8 @@
             </div>
 
             <div class="info-alert">
-                💡 <strong>Clock:</strong> uses reference bits.<br>
-                💡 <strong>LFU:</strong> evicts page with smallest frequency (ties broken by age).
+                💡 <strong>MRU</strong> evicts the most recently used page.<br>
+                💡 <strong>Clock</strong> uses reference bits. <strong>LFU</strong> uses frequency with age tie‑breaker.
             </div>
 
             <button class="btn-primary" onclick="simulate()">
@@ -363,36 +364,33 @@
             return;
         }
 
-        // Fixed‑size frame array (each element is page number or null)
         const frames = new Array(totalFrames).fill(null);
         let pageFaults = 0;
-        const steps = []; // each step: { page, fault, framesSnapshot: [...frames], replacedSlot? }
+        const steps = [];
 
-        // Algorithm data structures
-        let fifoQueue = [];            // for FIFO (indices)
-        let lruStack = [];            // for LRU (page numbers)
-        let clockPointer = 0;         // for Clock
-        let refBits = new Array(totalFrames).fill(0); // for Clock
-        let lfuCounts = new Map();    // page -> frequency
-        let lfuLoadTime = new Map();  // page -> global timestamp (for tie‑breaking)
+        let fifoQueue = [];
+        let lruList = [];
+        let mruList = [];
+        let clockPointer = 0;
+        let refBits = new Array(totalFrames).fill(0);
+        let lfuCounts = new Map();
+        let lfuLoadTime = new Map();
         let globalTime = 0;
 
-        const isFull = () => frames.every(f => f !== null);
-        const findEmptySlot = () => frames.findIndex(f => f === null);
-
-        for (const page of ref) {
+        for (let i = 0; i < ref.length; i++) {
+            const page = ref[i];
             globalTime++;
             const hit = frames.includes(page);
             let fault = !hit;
-            let replacedSlot = -1;
 
             if (!fault) {
-                // Update algorithm‑specific recency without changing frames
                 if (algo === 'lru') {
-                    lruStack = lruStack.filter(p => p !== page);
-                    lruStack.push(page);
+                    lruList = lruList.filter(p => p !== page);
+                    lruList.push(page);
+                } else if (algo === 'mru') {
+                    mruList = mruList.filter(p => p !== page);
+                    mruList.push(page);
                 } else if (algo === 'clock') {
-                    // set reference bit to 1 for the existing frame
                     const idx = frames.indexOf(page);
                     if (idx !== -1) refBits[idx] = 1;
                 } else if (algo === 'lfu') {
@@ -400,41 +398,35 @@
                 }
             } else {
                 pageFaults++;
-                if (!isFull()) {
-                    const emptyIdx = findEmptySlot();
+                const emptyIdx = frames.findIndex(f => f === null);
+                if (emptyIdx !== -1) {
                     frames[emptyIdx] = page;
-                    replacedSlot = emptyIdx;
                 } else {
-                    // Find victim slot based on algorithm
                     let victimIdx = -1;
-                    let victimPage = null;
-
                     switch (algo) {
                         case 'fifo':
                             victimIdx = fifoQueue.shift();
-                            victimPage = frames[victimIdx];
                             break;
                         case 'lru':
-                            victimPage = lruStack.shift();
-                            victimIdx = frames.indexOf(victimPage);
+                            const lruPage = lruList.shift();
+                            victimIdx = frames.indexOf(lruPage);
+                            break;
+                        case 'mru':
+                            const mruPage = mruList.pop();
+                            victimIdx = frames.indexOf(mruPage);
                             break;
                         case 'optimal':
-                            // Look into future, find the page with farthest next use (or never)
-                            {
-                                let farthestDist = -1;
-                                for (let i = 0; i < totalFrames; i++) {
-                                    const p = frames[i];
-                                    const nextUse = ref.slice(globalTime).indexOf(p);
-                                    if (nextUse === -1) {
-                                        victimIdx = i;
-                                        victimPage = p;
-                                        break;
-                                    }
-                                    if (nextUse > farthestDist) {
-                                        farthestDist = nextUse;
-                                        victimIdx = i;
-                                        victimPage = p;
-                                    }
+                            let farthest = -1;
+                            for (let j = 0; j < totalFrames; j++) {
+                                const p = frames[j];
+                                const nextUse = ref.slice(i + 1).indexOf(p);
+                                if (nextUse === -1) {
+                                    victimIdx = j;
+                                    break;
+                                }
+                                if (nextUse > farthest) {
+                                    farthest = nextUse;
+                                    victimIdx = j;
                                 }
                             }
                             break;
@@ -442,8 +434,6 @@
                             while (true) {
                                 if (refBits[clockPointer] === 0) {
                                     victimIdx = clockPointer;
-                                    victimPage = frames[victimIdx];
-                                    // advance pointer for next time
                                     clockPointer = (clockPointer + 1) % totalFrames;
                                     break;
                                 } else {
@@ -453,82 +443,58 @@
                             }
                             break;
                         case 'lfu':
-                            // Find page with smallest frequency. Tie: oldest load time.
-                            {
-                                let minFreq = Infinity;
-                                let candidateIdx = -1;
-                                for (let i = 0; i < totalFrames; i++) {
-                                    const p = frames[i];
-                                    const freq = lfuCounts.get(p) || 0;
-                                    if (freq < minFreq ||
-                                        (freq === minFreq && lfuLoadTime.get(p) < lfuLoadTime.get(frames[candidateIdx]))) {
-                                        minFreq = freq;
-                                        candidateIdx = i;
-                                    }
+                            let minFreq = Infinity;
+                            let candidate = 0;
+                            for (let j = 0; j < totalFrames; j++) {
+                                const p = frames[j];
+                                const freq = lfuCounts.get(p) || 0;
+                                if (freq < minFreq || 
+                                   (freq === minFreq && (lfuLoadTime.get(p) || 0) < (lfuLoadTime.get(frames[candidate]) || 0))) {
+                                    minFreq = freq;
+                                    candidate = j;
                                 }
-                                victimIdx = candidateIdx;
-                                victimPage = frames[victimIdx];
                             }
+                            victimIdx = candidate;
                             break;
-                        default: break;
                     }
-
-                    // Replace the victim slot with new page
                     frames[victimIdx] = page;
-                    replacedSlot = victimIdx;
                 }
 
-                // Update algorithm structures after replacement
-                const idx = replacedSlot;
                 if (algo === 'fifo') {
-                    fifoQueue.push(idx);
+                    fifoQueue.push(frames.indexOf(page));
                 } else if (algo === 'lru') {
-                    lruStack = lruStack.filter(p => p !== page);
-                    lruStack.push(page);
+                    lruList = lruList.filter(p => p !== page);
+                    lruList.push(page);
+                } else if (algo === 'mru') {
+                    mruList = mruList.filter(p => p !== page);
+                    mruList.push(page);
                 } else if (algo === 'clock') {
-                    refBits[idx] = 1; // new page gets reference bit set
+                    const idx = frames.indexOf(page);
+                    if (idx !== -1) refBits[idx] = 1;
                 } else if (algo === 'lfu') {
                     lfuCounts.set(page, (lfuCounts.get(page) || 0) + 1);
                     lfuLoadTime.set(page, globalTime);
                 }
             }
-
-            // Update LFU counts on hit (already done) and ensure new page is recorded
-            if (fault && algo === 'lfu') {
-                // Already updated above
-            }
-            // For non‑fault LFU, count increment was done above.
-            // For optimal/clock on fault, no extra count needed.
-
-            steps.push({
-                page,
-                fault,
-                framesSnapshot: [...frames],
-                replacedSlot: fault ? replacedSlot : -1
-            });
+            steps.push({ page, fault, frames: [...frames] });
         }
 
-        const hits = ref.length - pageFaults;
+        const totalRequests = ref.length;
+        const hits = totalRequests - pageFaults;
         const uniquePages = new Set(ref).size;
+        const hitRatio = (hits / totalRequests * 100).toFixed(2);
+        const missRatio = (pageFaults / totalRequests * 100).toFixed(2);
 
-        renderOutput(algo, ref, totalFrames, steps, pageFaults, hits, uniquePages);
-    }
-
-    function renderOutput(algo, ref, totalFrames, steps, faults, hits, uniqueCount) {
-        const outBody = document.getElementById('outBody');
         const algoNames = {
             'fifo': 'FIFO',
             'lru': 'LRU',
+            'mru': 'MRU',
             'optimal': 'Optimal',
             'clock': 'Clock',
             'lfu': 'LFU'
         };
-        const totalRequests = ref.length;
-        const hitRatio = (hits / totalRequests * 100).toFixed(2);
-        const missRatio = (faults / totalRequests * 100).toFixed(2);
 
-        let html = `
-        <div class="panel-body fade-up">
+        let html = `<div class="panel-body fade-up">
             <div class="field-label" style="margin-bottom:10px;">${algoNames[algo]} Algorithm · Frames: ${totalFrames} · Reference length: ${totalRequests}</div>
             <div class="memory-table-container">
                 <table class="memory-table">
@@ -537,13 +503,36 @@
         for (let i = 0; i < totalRequests; i++) html += `<th>${i}</th>`;
         html += `</tr></thead><tbody>`;
 
-        // Page row
         html += `<tr><td style="font-weight:700;">Page</td>`;
         for (const s of steps) html += `<td style="color:var(--accent2);">${s.page}</td>`;
         html += `</tr>`;
 
-        // Frame rows (fixed slots: Frame 0, Frame 1, ...)
         for (let f = 0; f < totalFrames; f++) {
             html += `<tr><td style="font-weight:700;color:var(--muted);">Frame ${f}</td>`;
             for (const s of steps) {
-                const val = s.framesSnapshot[f] !== null ? s.framesSnapshot[f] 
+                const val = s.frames[f] !== null ? s.frames[f] : '-';
+                html += `<td class="${s.fault ? 'fault-cell' : 'hit-cell'}">${val}</td>`;
+            }
+            html += `</tr>`;
+        }
+
+        html += `<tr><td style="font-weight:700;">Fault?</td>`;
+        for (const s of steps) {
+            html += `<td class="${s.fault ? 'fault-cell' : 'hit-cell'}">${s.fault ? '❌' : '✔'}</td>`;
+        }
+        html += `</tr></tbody></table></div>`;
+
+        html += `<div class="stats-row">
+            <div class="stat-card"><div class="sc-label">Total Requests</div><div class="sc-value">${totalRequests}</div></div>
+            <div class="stat-card"><div class="sc-label">Page Faults</div><div class="sc-value">${pageFaults}</div></div>
+            <div class="stat-card"><div class="sc-label">Hits</div><div class="sc-value">${hits}</div></div>
+            <div class="stat-card"><div class="sc-label">Hit Ratio</div><div class="sc-value">${hitRatio}%</div></div>
+            <div class="stat-card"><div class="sc-label">Miss Ratio</div><div class="sc-value">${missRatio}%</div></div>
+            <div class="stat-card"><div class="sc-label">Unique Pages</div><div class="sc-value">${uniquePages}</div></div>
+        </div></div>`;
+
+        document.getElementById('outBody').innerHTML = html;
+    }
+</script>
+</body>
+</html>
