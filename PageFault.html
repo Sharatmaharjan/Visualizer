@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Page Replacement Visualizer</title>
+    <title>Page Replacement Visualizer · Extended</title>
     <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -62,7 +62,6 @@
             font-size: 1rem;
             font-weight: 800;
             color: var(--text);
-            letter-spacing: -0.01em;
         }
         .app-sub {
             font-family: var(--mono);
@@ -76,11 +75,11 @@
             grid-template-columns: 360px 1fr;
             gap: 1.25rem;
             padding: 1.25rem;
-            max-width: 1440px;
+            max-width: 1500px;
             margin: 0 auto;
             align-items: start;
         }
-        @media (max-width: 900px) {
+        @media (max-width: 950px) {
             .main-layout {
                 grid-template-columns: 1fr;
             }
@@ -131,7 +130,7 @@
             font-weight: 600;
         }
         .mono-input {
-            width: 80px;
+            width: 100%;
             padding: 8px 10px;
             background: var(--surface2);
             border: 1px solid var(--border);
@@ -140,8 +139,6 @@
             font-family: var(--mono);
             font-size: 0.85rem;
             font-weight: 600;
-            text-align: center;
-            transition: border-color .2s;
         }
         .mono-input:focus {
             outline: none;
@@ -164,7 +161,6 @@
             background-repeat: no-repeat;
             background-position: right 12px center;
             padding-right: 30px;
-            transition: border-color .2s;
         }
         .styled-select:focus {
             outline: none;
@@ -210,6 +206,7 @@
         }
         .memory-table-container {
             overflow-x: auto;
+            margin-bottom: 16px;
         }
         .memory-table {
             border-collapse: collapse;
@@ -223,6 +220,7 @@
             padding: 6px 8px;
             text-align: center;
             border: 1px solid var(--border2);
+            white-space: nowrap;
         }
         .memory-table th {
             background: var(--surface2);
@@ -240,22 +238,19 @@
             color: var(--success);
             font-weight: 700;
         }
-        .empty-cell {
-            color: var(--dim);
-        }
         .stats-row {
             display: flex;
-            gap: 12px;
-            margin-top: 14px;
+            gap: 10px;
             flex-wrap: wrap;
+            margin-top: 12px;
         }
         .stat-card {
             background: var(--surface2);
             border: 1px solid var(--border2);
             border-radius: 8px;
-            padding: 12px 16px;
+            padding: 12px 14px;
             flex: 1;
-            min-width: 120px;
+            min-width: 100px;
         }
         .sc-label {
             font-family: var(--mono);
@@ -268,7 +263,7 @@
         }
         .sc-value {
             font-family: var(--mono);
-            font-size: 1.5rem;
+            font-size: 1.4rem;
             font-weight: 700;
             color: var(--accent2);
         }
@@ -286,11 +281,6 @@
             margin-bottom: 1rem;
             opacity: 0.3;
         }
-        .empty-state p {
-            font-size: 0.85rem;
-            line-height: 1.7;
-            color: var(--dim);
-        }
         @keyframes fadeUp {
             from { opacity: 0; transform: translateY(12px); }
             to { opacity: 1; transform: translateY(0); }
@@ -305,12 +295,11 @@
     <div class="logo-icon">🧠</div>
     <div>
         <div class="app-name">Page Replacement Visualizer</div>
-        <div class="app-sub">MEMORY MANAGEMENT · FIFO / LRU / OPTIMAL</div>
+        <div class="app-sub">MEMORY MANAGEMENT · FIFO / LRU / OPTIMAL / CLOCK / LFU</div>
     </div>
 </header>
 
 <div class="main-layout">
-    <!-- INPUT PANEL -->
     <div class="panel">
         <div class="panel-head">
             <span class="panel-head-title">⚙️ Configuration</span>
@@ -321,20 +310,23 @@
                 <option value="fifo">First In First Out (FIFO)</option>
                 <option value="lru">Least Recently Used (LRU)</option>
                 <option value="optimal">Optimal (MIN)</option>
+                <option value="clock">Clock (Second Chance)</option>
+                <option value="lfu">Least Frequently Used (LFU)</option>
             </select>
 
             <div style="margin-top:16px;">
                 <label class="field-label">Reference String (space/comma separated)</label>
-                <input type="text" class="mono-input" id="refInput" style="width:100%;" value="7 0 1 2 0 3 0 4 2 3 0 3 2 1 2 0 1 7 0 1" placeholder="e.g. 7 0 1 2 0 3 ...">
+                <input type="text" class="mono-input" id="refInput" value="7 0 1 2 0 3 0 4 2 3 0 3 2 1 2 0 1 7 0 1" placeholder="e.g. 7 0 1 2 0 3 ...">
             </div>
 
             <div class="field-row" style="margin-top:14px;">
                 <label>Frames</label>
-                <input type="number" class="mono-input" id="framesInput" value="3" min="1" max="10">
+                <input type="number" class="mono-input" id="framesInput" value="3" min="1" max="10" style="width:80px;">
             </div>
 
             <div class="info-alert">
-                💡 <strong>Optimal</strong> replaces the page that will not be used for the longest time in the future.
+                💡 <strong>Clock:</strong> uses reference bits.<br>
+                💡 <strong>LFU:</strong> evicts page with smallest frequency (ties broken by age).
             </div>
 
             <button class="btn-primary" onclick="simulate()">
@@ -343,7 +335,6 @@
         </div>
     </div>
 
-    <!-- OUTPUT PANEL -->
     <div class="panel" id="outPanel">
         <div class="panel-head">
             <span class="panel-head-title">📊 Simulation Result</span>
@@ -351,7 +342,7 @@
         <div id="outBody">
             <div class="empty-state">
                 <div class="empty-icon">📄</div>
-                <p>Enter a reference string and frame count,<br>then click <strong>Simulate</strong>.</p>
+                <p>Configure reference string & frames, then click <strong>Simulate</strong>.</p>
             </div>
         </div>
     </div>
@@ -365,161 +356,194 @@
     function simulate() {
         const algo = document.getElementById('algoSel').value;
         const refStr = document.getElementById('refInput').value;
-        const frames = parseInt(document.getElementById('framesInput').value) || 3;
+        const totalFrames = parseInt(document.getElementById('framesInput').value) || 3;
         const ref = parseReference(refStr);
         if (ref.length === 0) {
             alert('Please enter a valid reference string.');
             return;
         }
 
-        let memory = [];
+        // Fixed‑size frame array (each element is page number or null)
+        const frames = new Array(totalFrames).fill(null);
         let pageFaults = 0;
-        const steps = []; // each step: { page, fault, memoryState, evicted? }
+        const steps = []; // each step: { page, fault, framesSnapshot: [...frames], replacedSlot? }
 
-        // Helper to check if page is in memory
-        const inMemory = (page) => memory.includes(page);
+        // Algorithm data structures
+        let fifoQueue = [];            // for FIFO (indices)
+        let lruStack = [];            // for LRU (page numbers)
+        let clockPointer = 0;         // for Clock
+        let refBits = new Array(totalFrames).fill(0); // for Clock
+        let lfuCounts = new Map();    // page -> frequency
+        let lfuLoadTime = new Map();  // page -> global timestamp (for tie‑breaking)
+        let globalTime = 0;
 
-        // Implementation for each algorithm
-        if (algo === 'fifo') {
-            let fifoQueue = [];
-            for (const page of ref) {
-                const fault = !inMemory(page);
-                if (fault) {
-                    pageFaults++;
-                    if (memory.length < frames) {
-                        memory.push(page);
-                        fifoQueue.push(page);
-                    } else {
-                        const evicted = fifoQueue.shift();
-                        const idx = memory.indexOf(evicted);
-                        memory.splice(idx, 1);
-                        memory.push(page);
-                        fifoQueue.push(page);
-                    }
+        const isFull = () => frames.every(f => f !== null);
+        const findEmptySlot = () => frames.findIndex(f => f === null);
+
+        for (const page of ref) {
+            globalTime++;
+            const hit = frames.includes(page);
+            let fault = !hit;
+            let replacedSlot = -1;
+
+            if (!fault) {
+                // Update algorithm‑specific recency without changing frames
+                if (algo === 'lru') {
+                    lruStack = lruStack.filter(p => p !== page);
+                    lruStack.push(page);
+                } else if (algo === 'clock') {
+                    // set reference bit to 1 for the existing frame
+                    const idx = frames.indexOf(page);
+                    if (idx !== -1) refBits[idx] = 1;
+                } else if (algo === 'lfu') {
+                    lfuCounts.set(page, (lfuCounts.get(page) || 0) + 1);
                 }
-                steps.push({ page, fault, memory: [...memory] });
-            }
-        } else if (algo === 'lru') {
-            // Use a list to track recency, most recent at end
-            let lruList = [];
-            for (const page of ref) {
-                const fault = !inMemory(page);
-                if (fault) {
-                    pageFaults++;
-                    if (memory.length < frames) {
-                        memory.push(page);
-                        lruList.push(page);
-                    } else {
-                        const evicted = lruList.shift(); // least recently used
-                        const idx = memory.indexOf(evicted);
-                        memory.splice(idx, 1);
-                        memory.push(page);
-                        lruList.push(page);
-                    }
+            } else {
+                pageFaults++;
+                if (!isFull()) {
+                    const emptyIdx = findEmptySlot();
+                    frames[emptyIdx] = page;
+                    replacedSlot = emptyIdx;
                 } else {
-                    // Move to most recently used position
-                    lruList = lruList.filter(p => p !== page);
-                    lruList.push(page);
-                }
-                steps.push({ page, fault, memory: [...memory] });
-            }
-        } else if (algo === 'optimal') {
-            for (let i = 0; i < ref.length; i++) {
-                const page = ref[i];
-                const fault = !inMemory(page);
-                if (fault) {
-                    pageFaults++;
-                    if (memory.length < frames) {
-                        memory.push(page);
-                    } else {
-                        // Find page to replace: look into future, pick the one with farthest next use (or never)
-                        let farthestIdx = -1;
-                        let victim = memory[0];
-                        for (const m of memory) {
-                            const nextUse = ref.slice(i + 1).indexOf(m);
-                            if (nextUse === -1) {
-                                victim = m;
-                                break;
+                    // Find victim slot based on algorithm
+                    let victimIdx = -1;
+                    let victimPage = null;
+
+                    switch (algo) {
+                        case 'fifo':
+                            victimIdx = fifoQueue.shift();
+                            victimPage = frames[victimIdx];
+                            break;
+                        case 'lru':
+                            victimPage = lruStack.shift();
+                            victimIdx = frames.indexOf(victimPage);
+                            break;
+                        case 'optimal':
+                            // Look into future, find the page with farthest next use (or never)
+                            {
+                                let farthestDist = -1;
+                                for (let i = 0; i < totalFrames; i++) {
+                                    const p = frames[i];
+                                    const nextUse = ref.slice(globalTime).indexOf(p);
+                                    if (nextUse === -1) {
+                                        victimIdx = i;
+                                        victimPage = p;
+                                        break;
+                                    }
+                                    if (nextUse > farthestDist) {
+                                        farthestDist = nextUse;
+                                        victimIdx = i;
+                                        victimPage = p;
+                                    }
+                                }
                             }
-                            if (nextUse > farthestIdx) {
-                                farthestIdx = nextUse;
-                                victim = m;
+                            break;
+                        case 'clock':
+                            while (true) {
+                                if (refBits[clockPointer] === 0) {
+                                    victimIdx = clockPointer;
+                                    victimPage = frames[victimIdx];
+                                    // advance pointer for next time
+                                    clockPointer = (clockPointer + 1) % totalFrames;
+                                    break;
+                                } else {
+                                    refBits[clockPointer] = 0;
+                                    clockPointer = (clockPointer + 1) % totalFrames;
+                                }
                             }
-                        }
-                        const idx = memory.indexOf(victim);
-                        memory.splice(idx, 1);
-                        memory.push(page);
+                            break;
+                        case 'lfu':
+                            // Find page with smallest frequency. Tie: oldest load time.
+                            {
+                                let minFreq = Infinity;
+                                let candidateIdx = -1;
+                                for (let i = 0; i < totalFrames; i++) {
+                                    const p = frames[i];
+                                    const freq = lfuCounts.get(p) || 0;
+                                    if (freq < minFreq ||
+                                        (freq === minFreq && lfuLoadTime.get(p) < lfuLoadTime.get(frames[candidateIdx]))) {
+                                        minFreq = freq;
+                                        candidateIdx = i;
+                                    }
+                                }
+                                victimIdx = candidateIdx;
+                                victimPage = frames[victimIdx];
+                            }
+                            break;
+                        default: break;
                     }
+
+                    // Replace the victim slot with new page
+                    frames[victimIdx] = page;
+                    replacedSlot = victimIdx;
                 }
-                steps.push({ page, fault, memory: [...memory] });
+
+                // Update algorithm structures after replacement
+                const idx = replacedSlot;
+                if (algo === 'fifo') {
+                    fifoQueue.push(idx);
+                } else if (algo === 'lru') {
+                    lruStack = lruStack.filter(p => p !== page);
+                    lruStack.push(page);
+                } else if (algo === 'clock') {
+                    refBits[idx] = 1; // new page gets reference bit set
+                } else if (algo === 'lfu') {
+                    lfuCounts.set(page, (lfuCounts.get(page) || 0) + 1);
+                    lfuLoadTime.set(page, globalTime);
+                }
             }
+
+            // Update LFU counts on hit (already done) and ensure new page is recorded
+            if (fault && algo === 'lfu') {
+                // Already updated above
+            }
+            // For non‑fault LFU, count increment was done above.
+            // For optimal/clock on fault, no extra count needed.
+
+            steps.push({
+                page,
+                fault,
+                framesSnapshot: [...frames],
+                replacedSlot: fault ? replacedSlot : -1
+            });
         }
 
-        renderOutput(algo, ref, frames, steps, pageFaults);
+        const hits = ref.length - pageFaults;
+        const uniquePages = new Set(ref).size;
+
+        renderOutput(algo, ref, totalFrames, steps, pageFaults, hits, uniquePages);
     }
 
-    function renderOutput(algo, ref, frames, steps, totalFaults) {
+    function renderOutput(algo, ref, totalFrames, steps, faults, hits, uniqueCount) {
         const outBody = document.getElementById('outBody');
-        const algoNames = { 'fifo': 'FIFO', 'lru': 'LRU', 'optimal': 'Optimal' };
+        const algoNames = {
+            'fifo': 'FIFO',
+            'lru': 'LRU',
+            'optimal': 'Optimal',
+            'clock': 'Clock',
+            'lfu': 'LFU'
+        };
+        const totalRequests = ref.length;
+        const hitRatio = (hits / totalRequests * 100).toFixed(2);
+        const missRatio = (faults / totalRequests * 100).toFixed(2);
 
-        // Build table header: reference string steps
-        let headerRow = '<tr><th>Step</th>';
-        for (let i = 0; i < ref.length; i++) {
-            headerRow += `<th>${i}</th>`;
-        }
-        headerRow += '</tr>';
-
-        let pageRow = '<tr><td style="font-weight:700;">Page</td>';
-        for (const p of ref) pageRow += `<td style="color:var(--accent2);">${p}</td>`;
-        pageRow += '</tr>';
-
-        let faultRow = '<tr><td style="font-weight:700;">Fault?</td>';
-        for (const s of steps) {
-            faultRow += `<td class="${s.fault ? 'fault-cell' : 'hit-cell'}">${s.fault ? '❌' : '✔'}</td>`;
-        }
-        faultRow += '</tr>';
-
-        // Memory state rows: for each frame, show the page present at each step
-        let memoryRows = '';
-        for (let f = 0; f < frames; f++) {
-            memoryRows += `<tr><td style="font-weight:700;color:var(--muted);">Frame ${f}</td>`;
-            for (const s of steps) {
-                const val = s.memory[f] !== undefined ? s.memory[f] : '-';
-                memoryRows += `<td class="${s.fault ? 'fault-cell' : ''}">${val}</td>`;
-            }
-            memoryRows += '</tr>';
-        }
-
-        const hitCount = ref.length - totalFaults;
-        const faultRate = ((totalFaults / ref.length) * 100).toFixed(1);
-
-        const outputHTML = `
+        let html = `
         <div class="panel-body fade-up">
-            <div class="field-label">${algoNames[algo]} Algorithm · Frames: ${frames} · Reference length: ${ref.length}</div>
+            <div class="field-label" style="margin-bottom:10px;">${algoNames[algo]} Algorithm · Frames: ${totalFrames} · Reference length: ${totalRequests}</div>
             <div class="memory-table-container">
                 <table class="memory-table">
-                    <thead>${headerRow}</thead>
-                    <tbody>${pageRow}${faultRow}${memoryRows}</tbody>
-                </table>
-            </div>
-            <div class="stats-row">
-                <div class="stat-card">
-                    <div class="sc-label">Page Faults</div>
-                    <div class="sc-value">${totalFaults}</div>
-                </div>
-                <div class="stat-card">
-                    <div class="sc-label">Hits</div>
-                    <div class="sc-value">${hitCount}</div>
-                </div>
-                <div class="stat-card">
-                    <div class="sc-label">Fault Rate</div>
-                    <div class="sc-value">${faultRate}%</div>
-                </div>
-            </div>
-        </div>`;
+                    <thead>
+                        <tr><th>Step</th>`;
+        for (let i = 0; i < totalRequests; i++) html += `<th>${i}</th>`;
+        html += `</tr></thead><tbody>`;
 
-        outBody.innerHTML = outputHTML;
-    }
-</script>
-</body>
-</html>
+        // Page row
+        html += `<tr><td style="font-weight:700;">Page</td>`;
+        for (const s of steps) html += `<td style="color:var(--accent2);">${s.page}</td>`;
+        html += `</tr>`;
+
+        // Frame rows (fixed slots: Frame 0, Frame 1, ...)
+        for (let f = 0; f < totalFrames; f++) {
+            html += `<tr><td style="font-weight:700;color:var(--muted);">Frame ${f}</td>`;
+            for (const s of steps) {
+                const val = s.framesSnapshot[f] !== null ? s.framesSnapshot[f] 
