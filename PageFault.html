@@ -327,7 +327,7 @@
 
             <div class="info-alert">
                 💡 <strong>MRU</strong> evicts the most recently used page.<br>
-                💡 <strong>Clock</strong> uses reference bits. <strong>LFU</strong> uses frequency with age tie‑breaker.
+                💡 <strong>Clock</strong> uses reference bits. <strong>LFU</strong> uses frequency with LRU tie‑breaker.
             </div>
 
             <button class="btn-primary" onclick="simulate()">
@@ -374,7 +374,7 @@
         let clockPointer = 0;
         let refBits = new Array(totalFrames).fill(0);
         let lfuCounts = new Map();
-        let lfuLoadTime = new Map();
+        let lfuLastAccess = new Map();
         let globalTime = 0;
 
         for (let i = 0; i < ref.length; i++) {
@@ -395,6 +395,7 @@
                     if (idx !== -1) refBits[idx] = 1;
                 } else if (algo === 'lfu') {
                     lfuCounts.set(page, (lfuCounts.get(page) || 0) + 1);
+                    lfuLastAccess.set(page, globalTime);
                 }
             } else {
                 pageFaults++;
@@ -444,13 +445,15 @@
                             break;
                         case 'lfu':
                             let minFreq = Infinity;
-                            let candidate = 0;
+                            let oldestAccess = Infinity;
+                            let candidate = -1;
                             for (let j = 0; j < totalFrames; j++) {
                                 const p = frames[j];
                                 const freq = lfuCounts.get(p) || 0;
-                                if (freq < minFreq || 
-                                   (freq === minFreq && (lfuLoadTime.get(p) || 0) < (lfuLoadTime.get(frames[candidate]) || 0))) {
+                                const lastAccess = lfuLastAccess.get(p) || 0;
+                                if (freq < minFreq || (freq === minFreq && lastAccess < oldestAccess)) {
                                     minFreq = freq;
+                                    oldestAccess = lastAccess;
                                     candidate = j;
                                 }
                             }
@@ -473,7 +476,7 @@
                     if (idx !== -1) refBits[idx] = 1;
                 } else if (algo === 'lfu') {
                     lfuCounts.set(page, (lfuCounts.get(page) || 0) + 1);
-                    lfuLoadTime.set(page, globalTime);
+                    lfuLastAccess.set(page, globalTime);
                 }
             }
             steps.push({ page, fault, frames: [...frames] });
