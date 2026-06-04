@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Line Coding Visualizer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #1c2333;
+      --border: #30363d;
+      --border2: #21262d;
+      --text: #e6edf3;
+      --muted: #7d8590;
+      --dim: #484f58;
+      --accent: #9b59b6;
+      --accent2: #bb86fc;
+      --success: #3fb950;
+      --warn: #d29922;
+      --danger: #f85149;
+      --sans: 'Syne', sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+      --r: 10px;
+      --r-sm: 6px;
+      --color-wave: #bb86fc;
+      --color-grid: #30363d;
+    }
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 14px;
+    }
+    .app-header {
+      background: #010409;
+      border-bottom: 1px solid var(--border2);
+      padding: 14px 28px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, #9b59b6, #6c3483);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 17px;
+      flex-shrink: 0;
+    }
+    .app-name {
+      font-size: 1rem;
+      font-weight: 800;
+      color: var(--text);
+    }
+    .app-sub {
+      font-family: var(--mono);
+      font-size: 0.62rem;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      margin-top: 1px;
+    }
+    .main-layout {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 1.25rem;
+      padding: 1.25rem;
+      max-width: 1400px;
+      margin: 0 auto;
+      align-items: start;
+    }
+    @media (max-width: 900px) {
+      .main-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      overflow: hidden;
+    }
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border2);
+      background: rgba(255,255,255,0.015);
+    }
+    .panel-head-title {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .panel-body {
+      padding: 18px;
+    }
+    .field-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      display: block;
+      margin-bottom: 6px;
+    }
+    .field-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .mono-input {
+      width: 100%;
+      padding: 9px 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: border-color .2s;
+    }
+    .mono-input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(155,89,182,0.25);
+    }
+    .styled-select {
+      width: 100%;
+      padding: 9px 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 0.82rem;
+      font-weight: 600;
+      appearance: none;
+      cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%237d8590'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 30px;
+    }
+    .styled-select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(155,89,182,0.25);
+    }
+    .btn-primary {
+      width: 100%;
+      padding: 11px 16px;
+      background: var(--accent);
+      border: none;
+      border-radius: var(--r-sm);
+      color: #fff;
+      font-family: var(--sans);
+      font-size: 0.88rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background .2s, transform .1s;
+      margin-top: 12px;
+    }
+    .btn-primary:hover {
+      background: #7d3c98;
+    }
+    .btn-primary:active {
+      transform: scale(0.98);
+    }
+    .divider {
+      height: 1px;
+      background: var(--border2);
+      margin: 16px 0;
+    }
+    .info-alert {
+      background: rgba(155,89,182,0.1);
+      border: 1px solid rgba(155,89,182,0.3);
+      border-radius: var(--r-sm);
+      padding: 8px 12px;
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--accent2);
+      line-height: 1.5;
+      margin-bottom: 14px;
+    }
+    .canvas-container {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 12px;
+      margin-bottom: 16px;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: transparent;
+    }
+    .legend {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--muted);
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .legend-color {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      background: var(--color-wave);
+    }
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 4rem 2rem;
+      text-align: center;
+      color: var(--muted);
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .fade-up {
+      animation: fadeUp 0.4s ease;
+    }
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <div class="logo-icon">〰️</div>
+    <div>
+      <div class="app-name">Line Coding Visualizer</div>
+      <div class="app-sub">DATA COMMUNICATION · WAVEFORM GENERATION</div>
+    </div>
+  </header>
+
+  <div class="main-layout">
+    <!-- Input panel -->
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-head-title">⚙️ Configuration</span>
+      </div>
+      <div class="panel-body">
+        <div class="field-label">Line Coding Scheme</div>
+        <select class="styled-select" id="codingSelect">
+          <option value="unipolar_nrz">Unipolar NRZ</option>
+          <option value="polar_nrz_l">Polar NRZ‑L</option>
+          <option value="polar_nrz_i">Polar NRZ‑I</option>
+          <option value="rz">Polar RZ</option>
+          <option value="manchester">Manchester (IEEE 802.3)</option>
+          <option value="diff_manchester">Differential Manchester</option>
+          <option value="ami">AMI (Alternate Mark Inversion)</option>
+          <option value="pseudoternary">Pseudoternary</option>
+          <option value="mlt3">MLT‑3</option>
+        </select>
+
+        <div style="margin-top:16px;">
+          <label class="field-label">Binary Data (0s &amp; 1s)</label>
+          <input type="text" class="mono-input" id="dataInput" value="010011001" placeholder="e.g. 010011001">
+        </div>
+
+        <div class="info-alert">
+          💡 <strong>Unipolar:</strong> 0=0, 1=+V<br>
+          <strong>NRZ‑I:</strong> invert on 1<br>
+          <strong>Manchester:</strong> mid‑bit transition (IEEE)<br>
+          <strong>AMI:</strong> 1 alternates ±V, 0=0<br>
+          <strong>MLT‑3:</strong> cycles -V, 0, +V on 1
+        </div>
+
+        <button class="btn-primary" onclick="visualize()">
+          <span>▶</span> Visualize
+        </button>
+      </div>
+    </div>
+
+    <!-- Output panel -->
+    <div class="panel" id="outPanel">
+      <div class="panel-head">
+        <span class="panel-head-title">📈 Waveform</span>
+      </div>
+      <div id="outBody">
+        <div class="empty-state">
+          <div class="empty-icon">📊</div>
+          <p>Enter a binary string and select a scheme,<br>then click <strong>Visualize</strong>.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const voltageMap = {
+        high: 1,
+        low: -1,
+        zero: 0
+      };
+
+      function generateWaveform(bits, scheme) {
+        const points = [];           // {x, y} for polyline
+        const n = bits.length;
+        const bitWidth = 1;          // unitless, we'll scale later
+        let currentLevel = voltageMap.low;   // default start level for NRZ-I, Diff Manchester
+        let lastNonZeroPolarity = 1; // +1 for AMI, Pseudoternary
+        let mlt3State = -1;          // start from -1 (actual MLT-3 states: -1, 0, +1)
+        let mlt3Direction = 1;       // 1 for upward, -1 for downward? we'll use state cycle
+
+        // For NRZ-I and Differential Manchester we need to set initial level.
+        // We'll assume start at low (-1) unless otherwise.
+        // For Manchester we don't need currentLevel, as each bit defines its own shape.
+
+        function addPoint(x, y) {
+          points.push({ x, y });
+        }
+
+        function getNextMLT3Level(bit) {
+          if (bit === '0') return mlt3State;
+          // MLT-3 transition: if 1, move to next state in sequence -1 -> 0 -> +1 -> 0 -> -1 ...
+          if (mlt3State === -1) {
+            mlt3State = 0;
+          } else if (mlt3State === 0) {
+            mlt3State = (mlt3Direction === 1) ? 1 : -1;
+          } else if (mlt3State === 1) {
+            mlt3State = 0;
+            mlt3Direction = -1; // now going downward
+          }
+          // Actually correct MLT-3 state machine: states: -1, 0, +1. On 1, move to next state in order -1->0->+1->0->-1...
+          // So we can keep a state index 0:-1, 1:0, 2:+1, 3:0 and cycle.
+          // Let's implement properly:
+          return mlt3State; // we'll fix logic inside loop.
+        }
+
+        // Build the polyline by processing each bit
+        for (let i = 0; i < n; i++) {
+          const bit = bits[i];
+          const xStart = i * bitWidth;
+          const xMid = xStart + bitWidth / 2;
+          const xEnd = xStart + bitWidth;
+
+          if (scheme === 'unipolar_nrz') {
+            const level = bit === '1' ? voltageMap.high : voltageMap.zero;
+            addPoint(xStart, level);
+            addPoint(xEnd, level);
+            if (i < n - 1) {
+              const nextBit = bits[i + 1];
+              const nextLevel = nextBit === '1' ? voltageMap.high : voltageMap.zero;
+              if (nextLevel !== level) {
+                addPoint(xEnd, nextLevel);
+              }
+            }
+          } else if (scheme === 'polar_nrz_l') {
+            const level = bit === '1' ? voltageMap.high : voltageMap.low;
+            addPoint(xStart, level);
+            addPoint(xEnd, level);
+            if (i < n - 1) {
+              const nextBit = bits[i + 1];
+              const nextLevel = nextBit === '1' ? voltageMap.high : voltageMap.low;
+              if (nextLevel !== level) {
+                addPoint(xEnd, nextLevel);
+              }
+            }
+          } else if (scheme === 'polar_nrz_i') {
+            // Invert on 1
+            if (bit === '1') currentLevel = -currentLevel;
+            addPoint(xStart, currentLevel);
+            addPoint(xEnd, currentLevel);
+            if (i < n - 1) {
+              const nextBit = bits[i + 1];
+              let nextLevel = currentLevel;
+              if (nextBit === '1') nextLevel = -nextLevel;
+              if (nextLevel !== currentLevel) {
+                addPoint(xEnd, nextLevel);
+              }
+            }
+          } else if (scheme === 'rz') {
+            if (bit === '1') {
+              addPoint(xStart, voltageMap.high);
+              addPoint(xMid, voltageMap.high);
+              addPoint(xMid, voltageMap.zero);
+              addPoint(xEnd, voltageMap.zero);
+            } else {
+              addPoint(xStart, voltageMap.zero);
+              addPoint(xEnd, voltageMap.zero);
+            }
+            if (i < n - 1) {
+              const nextBit = bits[i + 1];
+              const currentEndLevel = voltageMap.zero;
+              const nextStartLevel = (nextBit === '1') ? voltageMap.high : voltageMap.zero;
+              if (nextStartLevel !== currentEndLevel) {
+                addPoint(xEnd, nextStartLevel);
+              }
+            }
+          } else if (scheme === 'manchester') {
+            // IEEE 802.3: 0 -> low->high, 1 -> high->low
+            if (bit === '0') {
+              addPoint(xStart, voltageMap.low);
+              addPoint(xMid, voltageMap.low);
+              addPoint(xMid, voltageMap.high);
+              addPoint(xEnd, voltageMap.high);
+            } else {
+              addPoint(xStart, voltageMap.high);
+              addPoint(xMid, voltageMap.high);
+              addPoint(xMid, voltageMap.low);
+              addPoint(xEnd, voltageMap.low);
+            }
+            if (i < n - 1) {
+              const nextBit = bits[i + 1];
+              const currentEndLevel = (bit === '0') ? voltageMap.high : voltageMap.low;
+              const nextStartLevel = (nextBit === '0') ? voltageMap.low : voltageMap.high;
+              if (nextStartLevel !== currentEndLevel) {
+                addPoint(xEnd, nextStartLevel);
+              }
+            }
+          } else if (scheme === 'diff_manchester') {
+            // always mid-bit transition; start: 0-> transition, 1-> no transition
+            const midLevel = -currentLevel; // transition always at middle
+            if (bit === '0') {
+              // transition at start
+              currentLevel = -currentLevel;
+            }
+            addPoint(xStart, currentLevel);
+            addPoint(xMid, currentLevel);
+            addPoint(xMid, midLevel);
+            addPoint(xEnd, midLevel);
+            if (i < n - 1) {
+              const nextBit = bits[i + 1];
+              let nextStartLevel = midLevel;
+              if (nextBit === '0') nextStartLevel = -nextStartLevel;
+              if (nextStartLevel !== midLevel) {
+                addPoint(xEnd, nextStartLevel);
+              }
+            }
+            currentLevel = midLevel; // for next bit's start reference
+          } else if (scheme === 'ami') {
+            let level;
+            if (bit === '1') {
+              level = lastNonZeroPolarity;
+              lastNonZeroPolarity = -lastNonZeroPolarity;
+            } else {
+              level = 0;
+            }
+            addPoint(xStart, level);
+            addPoint(xEnd, level);
+            if (i < n - 1) {
+              const nextBit = bits[i + 1];
+              let nextLevel = 0;
+              if (nextBit === '1') {
+                nextLevel = lastNonZeroPolarity;
+              }
+              if (nextLevel !== level) {
+                addPoint(xEnd, nextLevel);
+              }
+            }
+          } else if (scheme === 'pseudoternary') {
+            let level;
+            if (bit === '0') {
+              level = lastNonZeroPolarity;
+              lastNonZeroPolarity = -lastNonZeroPolarity;
+            } else {
+              level = 0;
+            }
+            addPoint(xStart, level);
+            addPoint(xEnd, level);
+            if (i < n - 1) {
+              const nextBit = bits[i + 1];
+              let nextLevel = 0;
+              if (nextBit === '0') {
+                nextLevel = lastNonZeroPolarity;
+              }
+              if (nextLevel !== level) {
+                addPoint(xEnd, nextLevel);
+              }
+            }
+          } else if (scheme === 'mlt3') {
+            // MLT-3 state machine: we'll keep current mlt3State (global)
+            if (bit === '1') {
+              if (mlt3State === -1) mlt3State = 0;
+              else if (mlt3State === 0) mlt3State = 1;
+              else if (mlt3State === 1) mlt3State = 0;
+              // simplified: actually real MLT-3 cycles: -1 → 0 → +1 → 0 → -1 ...
+              // So we need to track direction. Let's redo properly:
+              // We'll redefine mlt3State outside as an index 0:-1,1:0,2:+1,3:0 and cycle through 0->1->2->3->0...
+            }
+            // Let's implement MLT-3 correctly using a separate function:
+            function mlT3Next(bit) {
+              if (bit === '0') return mlt3State;
+              if (mlt3State === -1) return 0;
+              if (mlt3State === 0) return 1;
+              if (mlt3State === 1) return 0;
+            }
+            // Better: state array.
+          }
+        }
+
+        // We'll rewrite MLT-3 inside the loop for clarity
+      }
+
+      // Because MLT-3 logic needs proper implementation, we'll write a dedicated function.
+      function generateMLT3(bits) {
+        const points = [];
+        const n = bits.length;
+        const bitWidth = 1;
+        let state = 0; // 0:-V, 1:0, 2:+V
+        const states = [-1, 0, 1];
+        for (let i = 0; i < n; i++) {
+          const bit = bits[i];
+          const xStart = i * bitWidth;
+          const xEnd = xStart + bitWidth;
+          let level;
+          if (bit === '1') {
+            state = (state + 1) % 3;
+            level = states[state];
+          } else {
+            level = states[state];
+          }
+          points.push({ x: xStart, y: level });
+          points.push({ x: xEnd, y: level });
+          if (i < n - 1) {
+            const nextBit = bits[i + 1];
+            let nextState = state;
+            if (nextBit === '1') nextState = (state + 1) % 3;
+            const nextLevel = states[nextState];
+            if (nextLevel !== level) {
+              points.push({ x: xEnd, y: nextLevel });
+            }
+          }
+        }
+        return points;
+      }
+
+      // Let's rewrite the whole generation in a clean way.
+      window.visualize = function() {
+        const scheme = document.getElementById('codingSelect').value;
+        const dataStr = document.getElementById('dataInput').value.trim();
+        if (!/^[01]+$/.test(dataStr)) {
+          alert('Please enter a valid binary string (only 0 and 1).');
+          return;
+        }
+        const bits = dataStr.split('');
+        let points;
+        if (scheme === 'mlt3') {
+          points = generateMLT3(bits);
+        } else {
+          points = generateWaveformPoints(bits, scheme);
+        }
+        renderGraph(points, bits, scheme);
+      };
+
+      function generateWaveformPoints(bits, scheme) {
+        const points = [];
+        const n = bits.length;
+        const bw = 1;
+        let curLevel = -1; // for NRZ-I, Diff Manchester start at -1
+        let lastPol = 1; // for AMI, Pseudoternary
+
+        function add(x, y) { points.push({x, y}); }
+
+        for (let i = 0; i < n; i++) {
+          const bit = bits[i];
+          const xS = i * bw;
+          const xM = xS + bw/2;
+          const xE = xS + bw;
+
+          if (scheme === 'unipolar_nrz') {
+            const lev = bit === '1' ? 1 : 0;
+            add(xS, lev);
+            add(xE, lev);
+            if (i < n-1) {
+              const nLev = bits[i+1]==='1'?1:0;
+              if (nLev !== lev) add(xE, nLev);
+            }
+          } else if (scheme === 'polar_nrz_l') {
+            const lev = bit === '1' ? 1 : -1;
+            add(xS, lev);
+            add(xE, lev);
+            if (i < n-1) {
+              const nLev = bits[i+1]==='1'?1:-1;
+              if (nLev !== lev) add(xE, nLev);
+            }
+          } else if (scheme === 'polar_nrz_i') {
+            if (bit === '1') curLevel = -curLevel;
+            add(xS, curLevel);
+            add(xE, curLevel);
+            if (i < n-1) {
+              const nBit = bits[i+1];
+              let nLevel = curLevel;
+              if (nBit === '1') nLevel = -nLevel;
+              if (nLevel !== curLevel) add(xE, nLevel);
+            }
+          } else if (scheme === 'rz') {
+            if (bit === '1') {
+              add(xS, 1);
+              add(xM, 1);
+              add(xM, 0);
+              add(xE, 0);
+            } else {
+              add(xS, 0);
+              add(xE, 0);
+            }
+            if (i < n-1) {
+              const nBit = bits[i+1];
+              const endLvl = 0;
+              const nStartLvl = (nBit==='1')?1:0;
+              if (nStartLvl !== endLvl) add(xE, nStartLvl);
+            }
+          } else if (scheme === 'manchester') {
+            if (bit === '0') {
+              add(xS, -1); add(xM, -1); add(xM, 1); add(xE, 1);
+            } else {
+              add(xS, 1); add(xM, 1); add(xM, -1); add(xE, -1);
+            }
+            if (i < n-1) {
+              const nBit = bits[i+1];
+              const endLvl = (bit==='0')?1:-1;
+              const nStartLvl = (nBit==='0')?-1:1;
+              if (nStartLvl !== endLvl) add(xE, nStartLvl);
+            }
+          } else if (scheme === 'diff_manchester') {
+            const midLev = -curLevel;
+            if (bit === '0') curLevel = -curLevel;
+            add(xS, curLevel);
+            add(xM, curLevel);
+            add(xM, midLev);
+            add(xE, midLev);
+            if (i < n-1) {
+              const nBit = bits[i+1];
+              let nStart = midLev;
+              if (nBit === '0') nStart = -nStart;
+              if (nStart !== midLev) add(xE, nStart);
+            }
+            curLevel = midLev;
+          } else if (scheme === 'ami') {
+            let lev;
+            if (bit === '1') { lev = lastPol; lastPol = -lastPol; }
+            else lev = 0;
+            add(xS, lev); add(xE, lev);
+            if (i < n-1) {
+              const nBit = bits[i+1];
+              let nLev = 0;
+              if (nBit === '1') nLev = lastPol;
+              if (nLev !== lev) add(xE, nLev);
+            }
+          } else if (scheme === 'pseudoternary') {
+            let lev;
+            if (bit === '0') { lev = lastPol; lastPol = -lastPol; }
+            else lev = 0;
+            add(xS, lev); add(xE, lev);
+            if (i < n-1) {
+              const nBit = bits[i+1];
+              let nLev = 0;
+              if (nBit === '0') nLev = lastPol;
+              if (nLev !== lev) add(xE, nLev);
+            }
+          }
+        }
+        return points;
+      }
+
+      function generateMLT3(bits) {
+        const points = [];
+        const n = bits.length;
+        const bw = 1;
+        const states = [-1, 0, 1];
+        let stateIdx = 0; // start at -V
+        for (let i = 0; i < n; i++) {
+          const bit = bits[i];
+          const xS = i * bw;
+          const xE = xS + bw;
+          if (bit === '1') {
+            stateIdx = (stateIdx + 1) % 3;
+          }
+          const lev = states[stateIdx];
+          points.push({x: xS, y: lev});
+          points.push({x: xE, y: lev});
+          if (i < n-1) {
+            const nBit = bits[i+1];
+            let nextIdx = stateIdx;
+            if (nBit === '1') nextIdx = (stateIdx + 1) % 3;
+            const nLev = states[nextIdx];
+            if (nLev !== lev) points.push({x: xE, y: nLev});
+          }
+        }
+        return points;
+      }
+
+      function renderGraph(points, bits, scheme) {
+        const outBody = document.getElementById('outBody');
+        const n = bits.length;
+        const canvasWidth = Math.max(600, n * 60 + 80);
+        const canvasHeight = 350;
+        const dpr = window.devicePixelRatio || 1;
+
+        let html = `
+        <div class="panel-body fade-up">
+          <div class="canvas-container">
+            <canvas id="waveCanvas" style="width:100%; height:auto; max-height:400px;"></canvas>
+          </div>
+          <div class="legend">
+            <div class="legend-item"><span class="legend-color"></span> Signal Waveform</div>
+            <span style="color:var(--muted);">Bits: ${bits.join(' ')}</span>
+          </div>
+        </div>`;
+        outBody.innerHTML = html;
+
+        const canvas = document.getElementById('waveCanvas');
+        const container = canvas.parentNode;
+        const containerWidth = container.clientWidth - 24;
+        canvas.width = canvasWidth * dpr;
+        canvas.height = canvasHeight * dpr;
+        canvas.style.width = canvasWidth + 'px';
+        canvas.style.height = canvasHeight + 'px';
+        const ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
+
+        const margin = { top: 20, right: 40, bottom: 40, left: 50 };
+        const plotW = canvasWidth - margin.left - margin.right;
+        const plotH = canvasHeight - margin.top - margin.bottom;
+
+        // Scales
+        const xMax = n; // bits length
+        const yMin = -1.2, yMax = 1.2;
+        const scaleX = (x) => margin.left + (x / xMax) * plotW;
+        const scaleY = (y) => margin.top + plotH/2 - (y / (yMax - yMin)) * plotH;
+
+        ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+        // Grid
+        ctx.strokeStyle = '#30363d';
+        ctx.lineWidth = 0.5;
+        for (let i = 0; i <= xMax; i++) {
+          const x = scaleX(i);
+          ctx.beginPath();
+          ctx.moveTo(x, margin.top);
+          ctx.lineTo(x, margin.top + plotH);
+          ctx.stroke();
+        }
+        for (let y = -1; y <= 1; y += 0.5) {
+          const yPos = scaleY(y);
+          ctx.beginPath();
+          ctx.moveTo(margin.left, yPos);
+          ctx.lineTo(margin.left + plotW, yPos);
+          ctx.stroke();
+        }
+
+        // Axes
+        ctx.strokeStyle = '#484f58';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(margin.left, margin.top);
+        ctx.lineTo(margin.left, margin.top + plotH);
+        ctx.lineTo(margin.left + plotW, margin.top + plotH);
+        ctx.stroke();
+
+        // Y labels
+        ctx.fillStyle = '#7d8590';
+        ctx.font = '10px "JetBrains Mono"';
+        ctx.textAlign = 'right';
+        [-1, 0, 1].forEach(y => {
+          ctx.fillText(y, margin.left - 8, scaleY(y) + 4);
+        });
+
+        // X labels (bit indices)
+        ctx.textAlign = 'center';
+        for (let i = 0; i <= n; i++) {
+          ctx.fillText(i, scaleX(i), margin.top + plotH + 18);
+        }
+
+        // Draw waveform
+        ctx.strokeStyle = '#bb86fc';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        for (let i = 0; i < points.length; i++) {
+          const x = scaleX(points[i].x);
+          const y = scaleY(points[i].y);
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        // Draw bit boundaries vertical dashed lines? already grid.
+
+        // Add mid-bit markers for Manchester etc. could optionally show, but graph is clear.
+      }
+    })();
+  </script>
+</body>
+</html>
